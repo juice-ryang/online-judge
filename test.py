@@ -26,6 +26,7 @@ with open("test2.log", "wb") as log:
             print(process.write("helloworld", True))
             print('-read')
             print(process.read())
+            print(process.write("helloworld,too"))
         except PC.DEAD as e:
             print('dead')
             print((e.__str__()))

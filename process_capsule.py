@@ -37,6 +37,7 @@ class ProcessCapsule(object):
         self._readpos = 0
         self._runtime = None
         self._initialized_pid = None
+        self._is_dead = False
 
     def __del__(self):
         """Rest in peace, you're going to **die gracefully**."""
@@ -121,7 +122,7 @@ class ProcessCapsule(object):
             # TODO: Propagate self._runtime.exitstatus .signalstatus
             raise self.SEGFAULT(self.__readpos__())
         elif self._CONDITIONS[selected] == EOF:
-            raise self.DEAD(self.__readpos__())
+            return self.__readpos__()
         elif with_read:
             return self.read()
 
