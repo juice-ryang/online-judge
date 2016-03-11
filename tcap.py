@@ -1,7 +1,6 @@
 from sys import (
     stdin as _stdin,
     stdout as _stdout,
-    stderr as _stderr,
 )
 from select import select
 from json import (
@@ -63,7 +62,7 @@ def _in_out_stream(terminal, stdin, stdout, timeout=.05):
 
 @command()
 @argument('program', type=Path())
-@option('-j', '--json', type=Path(), default=None) 
+@option('-j', '--json', type=Path(), default=None)
 @option('--mode', 'mode', type=Choice([
     'capture',
     'playback',
@@ -73,7 +72,7 @@ def terminal(program, json=None, mode=False):
     if mode == 'capture':
         from pprint import pprint
         pprint(
-        terminal_capture(program, json)
+            terminal_capture(program, json)
         )
     elif mode == 'playback':
         terminal_playback(program, json)
@@ -111,6 +110,7 @@ def terminal_validate(program, json):
         raise Exception("-j, --json needed!")
     with open(json, 'r') as fp:
         captured = json_load(fp)
+
         class DB:
             _now = 0
             _max = len(captured)
@@ -123,37 +123,35 @@ def terminal_validate(program, json):
             stdin = None
             expected = None
             while db._now < db._max:
-                if not db._borrow and not db._retries:
+                if not db._retries:
                     stdin, expected = captured[db._now]
-                    print('input %d %s' % (db._now, stdin))
+                    print('-----')
+                    print('Input %d %s' % (db._now, stdin.encode('utf-8') if stdin else None))
+                    print('Expected %d %s' % (db._now, expected.encode('utf-8')))
                     stdout = _in_out_stream(terminal, stdin, None)
                 else:
                     stdout = _in_out_stream(terminal, None, None)
-                print('output %d %s' % (db._now, stdout))
-                if db._borrow == expected:
+                if db._borrow:
+                    stdout = db._borrow + stdout
+                    db._borrow = None
+                print('Output %d %s' % (db._now, stdout.encode('utf-8')))
+                if stdout == expected:
                     _PASS(db)
-                elif stdout == expected:
-                    _PASS(db)
-                elif db._borrow:
-                    # TODO
-                    print("HELL YEAH!!!!")
-                    break
                 else:
                     # partial check
                     if stdout and len(stdout) < len(expected):
                         if expected[:len(stdout)] == stdout:
-                            print('partial %d' % (db._now))
+                            print('[PARTIAL] %d' % (db._now))
                             expected = expected[len(stdout):]
-                            _RETRIES(db)
+                            _RETRIES(captured, db, expected, stdout)
                         else:
                             _FAIL(captured, db, expected, stdout)
                             break
                     elif len(stdout) > len(expected):
                         if stdout[:len(expected)] == expected:
-                            print('left for %d' % (db._now))
                             _PASS(db)
+                            print('[LEFT] %d' % (db._now))
                             db._borrow = stdout[len(expected):]
-                            expected = ''
                         else:
                             _FAIL(captured, db, expected, stdout)
                             break
@@ -163,16 +161,18 @@ def terminal_validate(program, json):
 
 
 def _FAIL(captured, db, expected, stdout):
-    print('fail %d' % (db._now))
+    print('[FAIL] %d' % (db._now))
     pprint({'now_expected': expected, 'orig_expected': captured[db._now][1], 'stdout': stdout, 'borrow': db._borrow})
 
+
 def _PASS(db):
-    print('pass %d' % (db._now))
+    print('[PASS] %d' % (db._now))
     db._now += 1
     db._retries = 0
     db._borrow = None
 
-def _RETRIES(db):
+
+def _RETRIES(captured, db, expected, stdout):
     db._retries += 1
     if db._retries >= db._max_retries:
         _FAIL(captured, db._now, expected, stdout)
