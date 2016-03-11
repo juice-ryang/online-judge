@@ -1,12 +1,14 @@
 from sys import (
     stdin as _stdin,
     stdout as _stdout,
+    stderr as _stderr,
 )
 from select import select
 from json import (
     dump as json_dump,
     load as json_load,
 )
+from pprint import pprint
 
 from click import (
     argument,
@@ -28,26 +30,35 @@ def _feedback_to_user(stdout):
     _stdout.flush()
 
 
-def _in_out_hook(terminal, log=None):
+def _in_out_hook(terminal, log=None, timeout=.05):
     """try to read from user, send it to program."""
     # try to read stdin
     stdin, _, _ = select([_stdin], [], [], 0)
     if stdin:
         stdin = stdin[0].readline().rstrip()
-        stdout = terminal.write(stdin)[1]
+        try:
+            stdout = terminal.write(stdin, timeout=timeout)[1]
+        except PC.DEAD as e:
+            stdout = str(e)
         if log is not None:
             log.append((stdin, stdout))
     else:
-        stdout = terminal.read()
-        if stdout != b'' and log is not None:
+        try:
+            stdout = terminal.read(timeout=timeout)
+        except PC.DEAD as e:
+            stdout = str(e)
+        if stdout and log is not None:
             log.append((None, stdout))
     return stdout
 
 
-def _in_out_stream(terminal, stdin, stdout):
-    if stdin:
-        terminal.write(stdin, response=False)
-    return terminal.read(timeout=1)
+def _in_out_stream(terminal, stdin, stdout, timeout=.05):
+    try:
+        if stdin:
+            return terminal.write(stdin, timeout=timeout)[1]
+        return terminal.read(timeout=timeout)
+    except PC.DEAD as e:
+        return str(e)
 
 
 @command()
@@ -60,11 +71,14 @@ def _in_out_stream(terminal, stdin, stdout):
 ]), default='capture')
 def terminal(program, json=None, mode=False):
     if mode == 'capture':
+        from pprint import pprint
+        pprint(
         terminal_capture(program, json)
+        )
     elif mode == 'playback':
         terminal_playback(program, json)
     elif mode == 'validate':
-        pass  # TODO
+        terminal_validate(program, json)
 
 
 def terminal_capture(program, json=None):
@@ -87,9 +101,81 @@ def terminal_playback(program, json):
         with PC(program, logfile=open("test.log", "wb")) as terminal:
             terminal.run(with_check=False)
             for stdin, stdout in captured:
-                # TODO : NOT YET TO WORK!
                 _feedback_to_user(_in_out_stream(terminal, stdin, None))
-            _feedback_to_user(_in_out_stream(terminal, None, None))
+            while not terminal.is_dead():
+                _feedback_to_user(_in_out_stream(terminal, None, None))
+
+
+def terminal_validate(program, json):
+    if json is None:
+        raise Exception("-j, --json needed!")
+    with open(json, 'r') as fp:
+        captured = json_load(fp)
+        class DB:
+            _now = 0
+            _max = len(captured)
+            _retries = 0
+            _max_retries = 50  # TODO
+            _borrow = None
+        db = DB()
+        with PC(program, logfile=open("test.log", "wb")) as terminal:
+            terminal.run(with_check=False)  # TODO
+            stdin = None
+            expected = None
+            while db._now < db._max:
+                if not db._borrow and not db._retries:
+                    stdin, expected = captured[db._now]
+                    print('input %d %s' % (db._now, stdin))
+                    stdout = _in_out_stream(terminal, stdin, None)
+                else:
+                    stdout = _in_out_stream(terminal, None, None)
+                print('output %d %s' % (db._now, stdout))
+                if db._borrow == expected:
+                    _PASS(db)
+                elif stdout == expected:
+                    _PASS(db)
+                elif db._borrow:
+                    # TODO
+                    print("HELL YEAH!!!!")
+                    break
+                else:
+                    # partial check
+                    if stdout and len(stdout) < len(expected):
+                        if expected[:len(stdout)] == stdout:
+                            print('partial %d' % (db._now))
+                            expected = expected[len(stdout):]
+                            _RETRIES(db)
+                        else:
+                            _FAIL(captured, db, expected, stdout)
+                            break
+                    elif len(stdout) > len(expected):
+                        if stdout[:len(expected)] == expected:
+                            print('left for %d' % (db._now))
+                            _PASS(db)
+                            db._borrow = stdout[len(expected):]
+                            expected = ''
+                        else:
+                            _FAIL(captured, db, expected, stdout)
+                            break
+                    else:
+                        _FAIL(captured, db, expected, stdout)
+                        break
+
+
+def _FAIL(captured, db, expected, stdout):
+    print('fail %d' % (db._now))
+    pprint({'now_expected': expected, 'orig_expected': captured[db._now][1], 'stdout': stdout, 'borrow': db._borrow})
+
+def _PASS(db):
+    print('pass %d' % (db._now))
+    db._now += 1
+    db._retries = 0
+    db._borrow = None
+
+def _RETRIES(db):
+    db._retries += 1
+    if db._retries >= db._max_retries:
+        _FAIL(captured, db._now, expected, stdout)
 
 
 if __name__ == "__main__":

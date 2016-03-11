@@ -121,7 +121,7 @@ class ProcessCapsule(object):
             # TODO: Propagate self._runtime.exitstatus .signalstatus
             raise self.SEGFAULT(self.__readpos__())
         elif self._CONDITIONS[selected] == EOF:
-            return self.__readpos__()
+            raise self.DEAD(self.__readpos__())
         elif with_read:
             return self.read()
 
@@ -133,7 +133,7 @@ class ProcessCapsule(object):
         det = Chardet(wanted)
         if det['encoding']:
             return wanted.decode(det['encoding'])
-        return wanted
+        return wanted.decode('utf-8')
 
     def is_dead(self):
         return not self._runtime.isalive()
