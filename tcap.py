@@ -147,7 +147,7 @@ def terminal_validate(program, json):
                         else:
                             _FAIL(captured, db, expected, stdout)
                             break
-                    elif len(stdout) > len(expected):
+                    elif stdout and len(stdout) > len(expected):
                         if stdout[:len(expected)] == expected:
                             _PASS(db)
                             print('[LEFT] %d' % (db._now))
@@ -155,9 +155,11 @@ def terminal_validate(program, json):
                         else:
                             _FAIL(captured, db, expected, stdout)
                             break
-                    else:
+                    elif stdout:
                         _FAIL(captured, db, expected, stdout)
                         break
+                    else:
+                        _RETRIES(captured, db, expected, stdout)
 
 
 def _FAIL(captured, db, expected, stdout):
