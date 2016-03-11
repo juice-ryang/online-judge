@@ -119,7 +119,7 @@ def terminal_validate(program, json):
             _borrow = None
         db = DB()
         with PC(program, logfile=open("test.log", "wb")) as terminal:
-            terminal.run(with_check=False)  # TODO
+            db._borrow = terminal.run()  # TODO
             stdin = None
             expected = None
             while db._now < db._max:
