@@ -1,0 +1,12 @@
+<html>
+  <head>
+    <title>JROnlineJudge</title>
+  </head>
+  <body>
+    <ul>
+      {% for s in problemsets %}
+      <li> <a href="/{{ s }}/">{{ s }}</a> </li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

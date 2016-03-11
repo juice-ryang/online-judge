@@ -28,4 +28,12 @@ def get_all_sets():
     return psetlist
 
 
+def get_problem_description(problemset, problem):
+    if problemset in psetlist:
+        if problem in pdict[problemset]:
+            f = open('problems/'+problemset+'/'+problem+'/description.md')
+            return "".join(f.readlines())
+    return None
+
+
 __search__()
