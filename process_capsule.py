@@ -37,7 +37,6 @@ class ProcessCapsule(object):
         self._readpos = 0
         self._runtime = None
         self._initialized_pid = None
-        self._is_dead = False
 
     def __del__(self):
         """Rest in peace, you're going to **die gracefully**."""
@@ -135,6 +134,9 @@ class ProcessCapsule(object):
         if det['encoding']:
             return wanted.decode(det['encoding'])
         return wanted
+
+    def is_dead(self):
+        return not self._runtime.isalive()
 
     class Exceptions(Exception):
         """Grouping all exceptions controlled by here."""
