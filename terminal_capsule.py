@@ -1,119 +1,148 @@
-"""."""  # TODO: fill
+"""TerminalCapsule: CAPTURE, PLAYBACK, and VALIDATE I/O for ProcessCapsule."""
 
-from sys import (
-    stdin as _stdin,
-    stdout as _stdout,
-)  # TODO: renaming
-from select import select
 from json import (
     dump as json_dump,
     load as json_load,
 )
-from pprint import pprint  # TODO: logging
-
-from click import (
-    argument,
-    command,
-    option,
-    Choice,
-    Path,
+from sys import (
+    stdin as _input_from_user,
+    stdout as _output_to_user,
 )
+from select import select as _select
 
-from process_capsule import PythonCapsule as PC  # TODO: Capsule
+from process_capsule import PythonCapsule as Capsule
 
 __author__ = "Minho Ryang (minhoryang@gmail.com)"
 
 
-def _feedback_to_user(stdout):  # TODO: renaming
-    """."""  # TODO: fill
-    if isinstance(stdout, (bytes)):
-        # TODO: XXX: WHY DON'T CHARDET?
-        _stdout.write(stdout.decode("utf-8"))
-    else:
-        _stdout.write(str(stdout))
-    _stdout.flush()
+class _TerminalCapsuleUtils(object):
+    """(Internal) Utils for Terminal Capsule."""
 
+    @staticmethod
+    def register(chained=None):
+        """@register()"""
+        def _register(func1):
+            target = func1
+            if chained:
+                target = chained(func1)
+            _Registered[func1.__name__.lower()] = target
+            return func1
+        return _register
 
-def _in_out_hook(terminal, log=None, timeout=.05):  # TODO: timeout
-    """try to read from user, send it to program."""  # TODO: commenting
-    # try to read stdin
-    stdin, _, _ = select([_stdin], [], [], 0)  # TODO: readable_stdin
-    # TODO: stdin = readable_stdin.get(0)
-    if stdin:
-        stdin = stdin[0].readline().rstrip()
+    class pprintify(object):
+        """@pprintify"""
+        def __init__(self, f):
+            self.f = f
+            self.__name__ = f.__name__
+
+        def __call__(self, *args, **kwargs):
+            from pprint import pprint
+            pprint(self.f(*args, **kwargs))
+
+    @staticmethod
+    def endpoints(pair_from_capsule, log=None):
+        """Capsule's in/out would be handled in here by printing or logging."""
+        if pair_from_capsule:
+            stdin, stdout = pair_from_capsule
+            if isinstance(stdout, (bytes)):
+                # TODO: XXX: WHY DON'T CHARDET?
+                _output_to_user.write(stdout.decode("utf-8"))
+            else:
+                _output_to_user.write(str(stdout))
+            _output_to_user.flush()
+            if log is not None:
+                log.append(pair_from_capsule)
+
+    @staticmethod
+    def hook(capsule, timeout=None):
+        """Hook user's input between terminal and capsule, Get outputs."""
+        is_readable, _, _ = _select([_input_from_user], [], [], 0)
+        if is_readable:
+            terminal_stdin = _input_from_user.readline().rstrip()
+            try:
+                _, capsule_stdout = capsule.write(
+                    terminal_stdin,
+                    timeout=timeout,
+                )
+            except Capsule.DEAD as dying_message:
+                capsule_stdout = str(dying_message)
+            return (terminal_stdin, capsule_stdout)
+        else:
+            try:
+                capsule_stdout = capsule.read(timeout=timeout)
+            except Capsule.DEAD as dying_message:
+                capsule_stdout = str(dying_message)
+            if capsule_stdout:
+                return (None, capsule_stdout)
+
+    @staticmethod
+    def stream(capsule, captured_stdin, timeout=None):
+        """Stream captured stdin to capsule and Get outputs."""
         try:
-            stdout = terminal.write(stdin, timeout=timeout)[1]
-        except PC.DEAD as e:
-            stdout = str(e)
-        if log is not None:
-            log.append((stdin, stdout))
-    else:
-        try:
-            stdout = terminal.read(timeout=timeout)
-        except PC.DEAD as e:
-            stdout = str(e)
-        if stdout and log is not None:
-            log.append((None, stdout))
-    return stdout
+            if captured_stdin:
+                _, capsule_stdout = capsule.write(
+                    captured_stdin,
+                    timeout=timeout,
+                )
+                return (captured_stdin, capsule_stdout)
+            return (None, capsule.read(timeout=timeout))
+        except Capsule.DEAD as dying_message:
+            return (captured_stdin, str(dying_message))
 
 
-def _in_out_stream(terminal, stdin, stdout, timeout=.05):  # TODO: rename and timeout
-    try:
-        if stdin:
-            return terminal.write(stdin, timeout=timeout)[1]
-        return terminal.read(timeout=timeout)
-    except PC.DEAD as e:
-        return str(e)
+_Registered = {}
 
 
-@command()
-@argument('program', type=Path())
-@option('-j', '--json', type=Path(), default=None)
-@option('--mode', 'mode', type=Choice([
-    'capture',
-    'playback',
-    'validate',
-]), default='capture')
-def terminal(program, json=None, mode=False):
-    if mode == 'capture':
-        pprint(
-            terminal_capture(program, json)
-        )
-    elif mode == 'playback':
-        terminal_playback(program, json)
-    elif mode == 'validate':
-        terminal_validate(program, json)
-
-
-def terminal_capture(program, json=None):  # TODO: rename 'Capture'
+@_TerminalCapsuleUtils.register(_TerminalCapsuleUtils.pprintify)
+def Capture(this_program, to_json=None):
+    """Run `this_program` by ProcessCapsule and Capture I/O `to_json`."""
     captured = []
-    with PC(program) as terminal:
+    with Capsule(this_program) as terminal:
         terminal.run(with_check=False)
         while not terminal.is_dead():
-            _feedback_to_user(_in_out_hook(terminal, captured))
-    if json:
-        with open(json, 'w') as fp:
-            json_dump(captured, fp)
+            _TerminalCapsuleUtils.endpoints(
+                _TerminalCapsuleUtils.hook(terminal),
+                captured,
+            )
+    if to_json:
+        with open(to_json, 'w') as json_fp:
+            json_dump(captured, json_fp)
     return captured
 
 
-def terminal_playback(program, json):  # TODO: rename 'Playback'
-    if json is None:
+@_TerminalCapsuleUtils.register()
+def Playback(this_program, from_json):
+    """Read I/O `from_json` and Playback it to `this_program`."""
+    if from_json is None:
         raise Exception("-j, --json needed!")
-    with open(json, 'r') as fp:
+
+    with open(from_json, 'r') as fp:
         captured = json_load(fp)
-        with PC(program, logfile=open("test.log", "wb")) as terminal:  # TODO: log
+        with Capsule(this_program) as terminal:  # TODO: logging
             terminal.run(with_check=False)
-            for stdin, stdout in captured:
-                _feedback_to_user(_in_out_stream(terminal, stdin, None))
+            for captured_stdin, _ in captured:
+                _TerminalCapsuleUtils.endpoints(
+                    _TerminalCapsuleUtils.stream(
+                        terminal,
+                        captured_stdin,
+                    ),
+                )
             while not terminal.is_dead():
-                _feedback_to_user(_in_out_stream(terminal, None, None))
+                _TerminalCapsuleUtils.endpoints(
+                    _TerminalCapsuleUtils.stream(
+                        terminal,
+                        None,
+                    )
+                )
 
 
-def terminal_validate(program, json):  # TODO: rename 'Validate'
-    if json is None:
+@_TerminalCapsuleUtils.register()
+def Validate(this_program, from_json):
+    """Read I/O `from_json` and Validate it to `this_program`."""
+    if from_json is None:
         raise Exception("-j, --json needed!")
-    with open(json, 'r') as fp:
+
+    with open(from_json, 'r') as fp:
         captured = json_load(fp)
 
         class DB:  # TODO: Rename 'TerminalValidateStatus'
@@ -123,7 +152,29 @@ def terminal_validate(program, json):  # TODO: rename 'Validate'
             _max_retries = 50  # TODO
             _borrow = None
         db = DB()
-        with PC(program, logfile=open("test.log", "wb")) as terminal:
+
+        @_TerminalCapsuleUtils.pprintify
+        def _FAIL(captured, db, expected, stdout):
+            print('[FAIL] %d' % (db._now))
+            return {
+                'now_expected': expected,
+                'orig_expected': captured[db._now][1],
+                'stdout': stdout,
+                'borrow': db._borrow
+            }
+
+        def _PASS(db):
+            print('[PASS] %d' % (db._now))
+            db._now += 1
+            db._retries = 0
+            db._borrow = None
+
+        def _RETRIES(captured, db, expected, stdout):
+            db._retries += 1
+            if db._retries >= db._max_retries:
+                _FAIL(captured, db._now, expected, stdout)
+
+        with Capsule(this_program, logfile=open("test.log", "wb")) as terminal:
             db._borrow = terminal.run()
             stdin = None
             expected = None
@@ -131,11 +182,17 @@ def terminal_validate(program, json):  # TODO: rename 'Validate'
                 if not db._retries:
                     stdin, expected = captured[db._now]
                     print('-----')
-                    print('Input %d %s' % (db._now, stdin.encode('utf-8') if stdin else None))
-                    print('Expected %d %s' % (db._now, expected.encode('utf-8')))
-                    stdout = _in_out_stream(terminal, stdin, None)
+                    print('Input %d %s' % (
+                        db._now,
+                        stdin.encode('utf-8') if stdin else None,
+                    ))
+                    print('Expected %d %s' % (
+                        db._now,
+                        expected.encode('utf-8'),
+                    ))
+                    _, stdout = _TerminalCapsuleUtils.stream(terminal, stdin)
                 else:
-                    stdout = _in_out_stream(terminal, None, None)
+                    _, stdout = _TerminalCapsuleUtils.stream(terminal, None)
                 if db._borrow:
                     stdout = db._borrow + stdout
                     db._borrow = None
@@ -167,23 +224,22 @@ def terminal_validate(program, json):  # TODO: rename 'Validate'
                         _RETRIES(captured, db, expected, stdout)
 
 
-def _FAIL(captured, db, expected, stdout):
-    print('[FAIL] %d' % (db._now))
-    pprint({'now_expected': expected, 'orig_expected': captured[db._now][1], 'stdout': stdout, 'borrow': db._borrow})
-
-
-def _PASS(db):
-    print('[PASS] %d' % (db._now))
-    db._now += 1
-    db._retries = 0
-    db._borrow = None
-
-
-def _RETRIES(captured, db, expected, stdout):
-    db._retries += 1
-    if db._retries >= db._max_retries:
-        _FAIL(captured, db._now, expected, stdout)
-
-
 if __name__ == "__main__":
-    terminal()
+    from click import (
+        argument,
+        command,
+        option,
+        Choice,
+        Path,
+    )
+
+    @command()
+    @argument('program', type=Path())
+    @option('-j', '--json', type=Path(), default=None)
+    @option('-m', '--mode',
+            'mode', type=Choice(_Registered.keys()), default='capture')
+    def __main__(program, json=None, mode=False):
+        """Entrypoint for Terminal Capsule."""
+        _Registered[mode](program, json)
+
+    __main__()
