@@ -1,4 +1,5 @@
 chardet
 pexpect
+click
 flask
 Flask-Markdown
