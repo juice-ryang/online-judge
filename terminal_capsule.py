@@ -20,7 +20,15 @@ class _TerminalCapsuleUtils(object):
 
     @staticmethod
     def register(chained=None):
-        """@register()"""
+        """`Register to Menu` Decorator.
+
+        >>> @register()
+        ... def func1():
+        ...     pass
+        >>> @register(func1)
+        ... def func2():
+        ...     pass
+        """
         def _register(func1):
             target = func1
             if chained:
@@ -30,28 +38,45 @@ class _TerminalCapsuleUtils(object):
         return _register
 
     class pprintify(object):
-        """@pprintify"""
+        """`pprint()` Decorator.
+
+        >>> @pprintify
+        ... def func():
+        ...     pass
+        """
         def __init__(self, f):
             self.f = f
-            self.__name__ = f.__name__
+
+        def __repr__(self):
+            return self.f.__repr__()
 
         def __call__(self, *args, **kwargs):
             from pprint import pprint
-            pprint(self.f(*args, **kwargs))
+            ret = self.f(*args, **kwargs)
+            pprint(ret)
+            return ret
 
     @staticmethod
-    def endpoints(pair_from_capsule, log=None):
-        """Capsule's in/out would be handled in here by printing or logging."""
+    def report(this):
+        # XXX: no additional parameters
+        def _(*args, **kwargs):
+            # TODO: logging at here
+            return this(*args, **kwargs)
+        return _
+
+    @staticmethod
+    def endpoints(pair_from_capsule, records=None):
+        """Capsule's in/out would be handled in here."""
         if pair_from_capsule:
             stdin, stdout = pair_from_capsule
             if isinstance(stdout, (bytes)):
-                # TODO: XXX: WHY DON'T CHARDET?
+                # TODO XXX: WHY DON'T CHARDET?
                 _output_to_user.write(stdout.decode("utf-8"))
             else:
                 _output_to_user.write(str(stdout))
             _output_to_user.flush()
-            if log is not None:
-                log.append(pair_from_capsule)
+            if records is not None:
+                records.append(pair_from_capsule)
 
     @staticmethod
     def hook(capsule, timeout=None):
@@ -94,14 +119,17 @@ _Registered = {}
 
 
 @_TerminalCapsuleUtils.register(_TerminalCapsuleUtils.pprintify)
-def Capture(this_program, to_json=None):
+def Capture(this_program, to_json=None, logfile=None, timeout=None):
     """Run `this_program` by ProcessCapsule and Capture I/O `to_json`."""
     captured = []
-    with Capsule(this_program) as terminal:
-        terminal.run(with_check=False)
-        while not terminal.is_dead():
+    with Capsule(this_program, logfile=logfile) as capsule:
+        capsule.run(with_check=False)
+        while not capsule.is_dead():
             _TerminalCapsuleUtils.endpoints(
-                _TerminalCapsuleUtils.hook(terminal),
+                _TerminalCapsuleUtils.hook(
+                    capsule,
+                    timeout=timeout,
+                ),
                 captured,
             )
     if to_json:
@@ -111,33 +139,36 @@ def Capture(this_program, to_json=None):
 
 
 @_TerminalCapsuleUtils.register()
-def Playback(this_program, from_json):
+def Playback(this_program, from_json, logfile=None, timeout=None):
     """Read I/O `from_json` and Playback it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")
 
     with open(from_json, 'r') as fp:
         captured = json_load(fp)
-        with Capsule(this_program) as terminal:  # TODO: logging
-            terminal.run(with_check=False)
+        with Capsule(this_program, logfile=logfile) as capsule:
+            capsule.run(with_check=False)
             for captured_stdin, _ in captured:
                 _TerminalCapsuleUtils.endpoints(
                     _TerminalCapsuleUtils.stream(
-                        terminal,
+                        capsule,
                         captured_stdin,
+                        timeout=timeout,
                     ),
                 )
-            while not terminal.is_dead():
+            while not capsule.is_dead():
                 _TerminalCapsuleUtils.endpoints(
                     _TerminalCapsuleUtils.stream(
-                        terminal,
+                        capsule,
                         None,
+                        timeout=timeout,
                     )
                 )
 
 
 @_TerminalCapsuleUtils.register()
-def Validate(this_program, from_json):
+def Validate(this_program, from_json,
+             logfile=None, max_retries=50, timeout=None):
     """Read I/O `from_json` and Validate it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")
@@ -145,83 +176,130 @@ def Validate(this_program, from_json):
     with open(from_json, 'r') as fp:
         captured = json_load(fp)
 
-        class DB:  # TODO: Rename 'TerminalValidateStatus'
-            _now = 0
-            _max = len(captured)
-            _retries = 0
-            _max_retries = 50  # TODO
-            _borrow = None
-        db = DB()
+        class TerminalValidateStatus(object):
+            """
+            N: which captured line try to validate.
+            RETRIES: for waiting slow response.
+            """
+            N = 0
+            MAX = len(captured)
+            RETRIES = 0
 
+        class TerminalValidateBuffer(object):
+            """
+            expected: from captured
+            stdout: from capsule
+            borrow: left from stdout-expected
+            """
+            expected = None
+            stdout = None
+            borrow = None
+
+        now = TerminalValidateStatus()
+        buf = TerminalValidateBuffer()
+
+        @_TerminalCapsuleUtils.report
         @_TerminalCapsuleUtils.pprintify
-        def _FAIL(captured, db, expected, stdout):
-            print('[FAIL] %d' % (db._now))
+        def _FAIL():
+            print('[FAIL] %d' % (now.N))
             return {
-                'now_expected': expected,
-                'orig_expected': captured[db._now][1],
-                'stdout': stdout,
-                'borrow': db._borrow
+                'now_expected': buf.expected,
+                'orig_expected': captured[now.N][1],
+                'stdout': buf.stdout,
+                'borrow': buf.borrow,
             }
 
-        def _PASS(db):
-            print('[PASS] %d' % (db._now))
-            db._now += 1
-            db._retries = 0
-            db._borrow = None
+        @_TerminalCapsuleUtils.report
+        def _PASS():
+            print('[PASS] %d' % (now.N))
+            now.N += 1
+            now.RETRIES = 0
+            buf.borrow = None
 
-        def _RETRIES(captured, db, expected, stdout):
-            db._retries += 1
-            if db._retries >= db._max_retries:
-                _FAIL(captured, db._now, expected, stdout)
+        @_TerminalCapsuleUtils.report
+        def _RETRIES():
+            now.RETRIES += 1
+            if now.RETRIES >= max_retries:
+                return _FAIL()
 
-        with Capsule(this_program, logfile=open("test.log", "wb")) as terminal:
-            db._borrow = terminal.run()
-            stdin = None
-            expected = None
-            while db._now < db._max:
-                if not db._retries:
-                    stdin, expected = captured[db._now]
-                    print('-----')
-                    print('Input %d %s' % (
-                        db._now,
-                        stdin.encode('utf-8') if stdin else None,
-                    ))
-                    print('Expected %d %s' % (
-                        db._now,
-                        expected.encode('utf-8'),
-                    ))
-                    _, stdout = _TerminalCapsuleUtils.stream(terminal, stdin)
+        @_TerminalCapsuleUtils.report
+        def _PARTIAL():
+            print('[PARTIAL] %d' % (now.N))
+            buf.expected = buf.expected[len(buf.stdout):]
+            return _RETRIES()
+
+        @_TerminalCapsuleUtils.report
+        def _LEFT():
+            _PASS()  # XXX order) be here!
+            print('[LEFT] %d' % (now.N))
+            buf.borrow = buf.stdout[len(buf.expected):]
+
+        @_TerminalCapsuleUtils.report
+        def _START():
+            buf.borrow = capsule.run()  # XXX: no timeout!
+
+        @_TerminalCapsuleUtils.report
+        def _GET_STDIN():
+            stdin, buf.expected = captured[now.N]
+            print('-----')
+            print('Input %d %s' % (
+                now.N,
+                stdin.encode('utf-8') if stdin else None,
+            ))
+            print('Expected %d %s' % (
+                now.N,
+                buf.expected.encode('utf-8'),
+            ))
+            return stdin
+
+        @_TerminalCapsuleUtils.report
+        def _GOT_STDOUT():
+            if buf.borrow:
+                buf.stdout = buf.borrow + buf.stdout
+                buf.borrow = None
+            print('Output %d %s' % (now.N, buf.stdout.encode('utf-8')))
+
+        with Capsule(this_program, logfile=logfile) as capsule:
+            _START()
+            while now.N < now.MAX:
+                if not now.RETRIES:
+                    _, buf.stdout = _TerminalCapsuleUtils.stream(
+                        capsule,
+                        _GET_STDIN(),
+                        timeout=timeout,
+                    )
                 else:
-                    _, stdout = _TerminalCapsuleUtils.stream(terminal, None)
-                if db._borrow:
-                    stdout = db._borrow + stdout
-                    db._borrow = None
-                print('Output %d %s' % (db._now, stdout.encode('utf-8')))
-                if stdout == expected:
-                    _PASS(db)
+                    _, buf.stdout = _TerminalCapsuleUtils.stream(
+                        capsule,
+                        None,
+                        timeout=timeout,
+                    )
+                _GOT_STDOUT()
+                if buf.stdout == buf.expected:
+                    _PASS()
                 else:
-                    # partial check
-                    if stdout and len(stdout) < len(expected):
-                        if expected[:len(stdout)] == stdout:
-                            print('[PARTIAL] %d' % (db._now))
-                            expected = expected[len(stdout):]
-                            _RETRIES(captured, db, expected, stdout)
+                    if buf.stdout:  # XXX: Partial Check
+                        if len(buf.stdout) < len(buf.expected):
+                            if buf.expected[:len(buf.stdout)] == buf.stdout:
+                                is_failed = _PARTIAL()
+                                if is_failed:
+                                    break
+                            else:
+                                _FAIL()
+                                break
+                        elif len(buf.stdout) > len(buf.expected):
+                            if buf.stdout[:len(buf.expected)] == buf.expected:
+                                _LEFT()
+                            else:
+                                _FAIL()
+                                break
                         else:
-                            _FAIL(captured, db, expected, stdout)
+                            _FAIL()
                             break
-                    elif stdout and len(stdout) > len(expected):
-                        if stdout[:len(expected)] == expected:
-                            _PASS(db)
-                            print('[LEFT] %d' % (db._now))
-                            db._borrow = stdout[len(expected):]
-                        else:
-                            _FAIL(captured, db, expected, stdout)
-                            break
-                    elif stdout:
-                        _FAIL(captured, db, expected, stdout)
-                        break
                     else:
-                        _RETRIES(captured, db, expected, stdout)
+                        is_failed = _RETRIES()
+                        if is_failed:
+                            break
 
 
 if __name__ == "__main__":
@@ -230,16 +308,22 @@ if __name__ == "__main__":
         command,
         option,
         Choice,
+        File,
         Path,
     )
 
     @command()
     @argument('program', type=Path())
-    @option('-j', '--json', type=Path(), default=None)
     @option('-m', '--mode',
             'mode', type=Choice(_Registered.keys()), default='capture')
-    def __main__(program, json=None, mode=False):
+    @option('-j', '--json', type=Path(), default=None,
+            help='Generate .json (or playback/validate)')
+    @option('-o', '--out', type=File('wb'), default=None,
+            help='Generate .out  (or logging)')
+    @option('-t', '--timeout', type=int, default=None,
+            help='Set timeout (default: .05s, validate: 2.5s)')
+    def __main__(program, mode, json, out, timeout):
         """Entrypoint for Terminal Capsule."""
-        _Registered[mode](program, json)
+        _Registered[mode](program, json, out, timeout=timeout)
 
     __main__()
