@@ -1,10 +1,13 @@
 {% extends "__bootstrap.html" %}
 {% block __bootstrap__body %}
-  {{ descrpition|markdown }}
-  <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#myModal"> 
-    제출하기
-  </button>
-
+  <ol class="breadcrumb" style="margin-bottom:40px">
+    <li><a href="/">Home</a></li>
+    <li><a href="/{{ problemset }}/">{{ problemset }}</a></li>
+    <li class="active">{{ problem }}</li>
+  </ol>
+  <blockquote class="blockquote"><b>Problem Description</b></blockquote> 
+  <blockquote class="blockquote" style="margin-bottom:40px">{{ descrpition|markdown }}</blockquote>
+  <button type="button" class="btn btn-primary btn-block" data-toggle="modal" data-target="#myModal"> Check </button>
   <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content">
@@ -12,14 +15,16 @@
           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
-          <h4 class="modal-title" id="myModalLabel">제출하기</h4>
+          <h4 class="modal-title" id="myModalLabel">
+            Submit Your Code<br><b>Be Careful: Submitted code cannot be retrieved.</b>
+          </h4>
         </div>
         <div class="modal-body">
           <textarea id="codearea" name="codearea"></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary">Save changes</button>
+          <button type="button" class="btn btn-primary">Submit</button>
         </div>
       </div>
     </div>
@@ -42,6 +47,8 @@
             theme: "elegant",
             indentUnit: 4,
             autoCloseBrackets: true,
+            autofocus: true,
+            value: "# Type your python code here\n",
           });
     myCodeMirror.setSize("70%", "90%");
   </script>

@@ -1,12 +1,12 @@
-<html>
-  <head>
-    <title>JROnlineJudge</title>
-  </head>
-  <body>
-    <ul>
-      {% for p in problems %}
-      <li> <a href="/{{ problemset }}/{{ p }}/">{{ p }}</a> </li>
-      {% endfor %}
-    </ul>
-  </body>
-</html>
+{% extends "__bootstrap.html" %}
+{% block __bootstrap__body %}
+  <ol class="breadcrumb" style="margin-bottom:40px">
+    <li><a href="/">Home</a></li>
+    <li class="active">{{ problemset }}</li>
+  </ol> 
+  <div class="list-group">
+    {% for p in problems %}
+    <a href="/{{ problemset }}/{{ p }}/" class="list-group-item">{{ p }}</a>
+    {% endfor %}
+  </div>
+{% endblock %}

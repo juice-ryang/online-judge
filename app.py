@@ -32,7 +32,7 @@ def problem(problemset, problem):
     return render_template(
             "problem.html",
             problemset = problemset,
-            problems = problem,
+            problem = problem,
             descrpition = problems.get_problem_description(problemset, problem)
     ), 200
 

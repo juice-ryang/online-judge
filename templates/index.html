@@ -1,8 +1,20 @@
 {% extends "__bootstrap.html" %}
 {% block __bootstrap__body %}
-  <div class="list-group">
-    {% for s in problemsets %}
-    <a href="/{{ s }}/" class="list-group-item">{{ s }}</a>
-    {% endfor %}
-  </div>
+  <div style="width: 100%; text-align: center;">
+    <img src="/static/logo.jpg" style="width:300px; margin:40px">
+    <h2>
+      Problem Sets
+    </h2>
+    <h3><small class="text-muted">
+      Computational Thinking, 2016 Spring
+    </small></h3>
+    <div class="list-group" style="margin-top:40px">
+      {% for s in problemsets %}
+      <a href="/{{ s }}/" class="list-group-item">{{ s }}</a>
+      {% endfor %}
+    </div>
+    <h4 style="margin-top:1em"><small class="text-muted">
+      Developed by @minhoryang and @juice500ml
+    </small></h4>
+</div>
 {% endblock %}
