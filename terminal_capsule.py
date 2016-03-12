@@ -130,7 +130,7 @@ def Capture(this_program, to_json=None, logfile=None, timeout=None):
                     capsule,
                     timeout=timeout,
                 ),
-                captured,
+                records=captured,
             )
     if to_json:
         with open(to_json, 'w') as json_fp:
