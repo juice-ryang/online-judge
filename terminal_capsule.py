@@ -168,7 +168,8 @@ def Playback(this_program, from_json, logfile=None, timeout=None):
 
 @_TerminalCapsuleUtils.register()
 def Validate(this_program, from_json,
-             logfile=None, max_retries=50, timeout=None):
+             logfile=None, max_retries=50, timeout=None,
+             report=_TerminalCapsuleUtils.report):
     """Read I/O `from_json` and Validate it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")
@@ -198,7 +199,7 @@ def Validate(this_program, from_json,
         now = TerminalValidateStatus()
         buf = TerminalValidateBuffer()
 
-        @_TerminalCapsuleUtils.report
+        @report
         @_TerminalCapsuleUtils.pprintify
         def _FAIL():
             print('[FAIL] %d' % (now.N))
@@ -209,36 +210,36 @@ def Validate(this_program, from_json,
                 'borrow': buf.borrow,
             }
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _PASS():
             print('[PASS] %d' % (now.N))
             now.N += 1
             now.RETRIES = 0
             buf.borrow = None
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _RETRIES():
             now.RETRIES += 1
             if now.RETRIES >= max_retries:
                 return _FAIL()
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _PARTIAL():
             print('[PARTIAL] %d' % (now.N))
             buf.expected = buf.expected[len(buf.stdout):]
             return _RETRIES()
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _LEFT():
             _PASS()  # XXX order) be here!
             print('[LEFT] %d' % (now.N))
             buf.borrow = buf.stdout[len(buf.expected):]
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _START():
             buf.borrow = capsule.run()  # XXX: no timeout!
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _GET_STDIN():
             stdin, buf.expected = captured[now.N]
             print('-----')
@@ -252,7 +253,7 @@ def Validate(this_program, from_json,
             ))
             return stdin
 
-        @_TerminalCapsuleUtils.report
+        @report
         def _GOT_STDOUT():
             if buf.borrow:
                 buf.stdout = buf.borrow + buf.stdout
