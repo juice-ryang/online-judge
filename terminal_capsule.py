@@ -1,13 +1,15 @@
+"""."""  # TODO: fill
+
 from sys import (
     stdin as _stdin,
     stdout as _stdout,
-)
+)  # TODO: renaming
 from select import select
 from json import (
     dump as json_dump,
     load as json_load,
 )
-from pprint import pprint
+from pprint import pprint  # TODO: logging
 
 from click import (
     argument,
@@ -17,22 +19,26 @@ from click import (
     Path,
 )
 
-from process_capsule import PythonCapsule as PC
+from process_capsule import PythonCapsule as PC  # TODO: Capsule
+
+__author__ = "Minho Ryang (minhoryang@gmail.com)"
 
 
-def _feedback_to_user(stdout):
-    """."""
+def _feedback_to_user(stdout):  # TODO: renaming
+    """."""  # TODO: fill
     if isinstance(stdout, (bytes)):
+        # TODO: XXX: WHY DON'T CHARDET?
         _stdout.write(stdout.decode("utf-8"))
     else:
         _stdout.write(str(stdout))
     _stdout.flush()
 
 
-def _in_out_hook(terminal, log=None, timeout=.05):
-    """try to read from user, send it to program."""
+def _in_out_hook(terminal, log=None, timeout=.05):  # TODO: timeout
+    """try to read from user, send it to program."""  # TODO: commenting
     # try to read stdin
-    stdin, _, _ = select([_stdin], [], [], 0)
+    stdin, _, _ = select([_stdin], [], [], 0)  # TODO: readable_stdin
+    # TODO: stdin = readable_stdin.get(0)
     if stdin:
         stdin = stdin[0].readline().rstrip()
         try:
@@ -51,7 +57,7 @@ def _in_out_hook(terminal, log=None, timeout=.05):
     return stdout
 
 
-def _in_out_stream(terminal, stdin, stdout, timeout=.05):
+def _in_out_stream(terminal, stdin, stdout, timeout=.05):  # TODO: rename and timeout
     try:
         if stdin:
             return terminal.write(stdin, timeout=timeout)[1]
@@ -70,7 +76,6 @@ def _in_out_stream(terminal, stdin, stdout, timeout=.05):
 ]), default='capture')
 def terminal(program, json=None, mode=False):
     if mode == 'capture':
-        from pprint import pprint
         pprint(
             terminal_capture(program, json)
         )
@@ -80,7 +85,7 @@ def terminal(program, json=None, mode=False):
         terminal_validate(program, json)
 
 
-def terminal_capture(program, json=None):
+def terminal_capture(program, json=None):  # TODO: rename 'Capture'
     captured = []
     with PC(program) as terminal:
         terminal.run(with_check=False)
@@ -92,12 +97,12 @@ def terminal_capture(program, json=None):
     return captured
 
 
-def terminal_playback(program, json):
+def terminal_playback(program, json):  # TODO: rename 'Playback'
     if json is None:
         raise Exception("-j, --json needed!")
     with open(json, 'r') as fp:
         captured = json_load(fp)
-        with PC(program, logfile=open("test.log", "wb")) as terminal:
+        with PC(program, logfile=open("test.log", "wb")) as terminal:  # TODO: log
             terminal.run(with_check=False)
             for stdin, stdout in captured:
                 _feedback_to_user(_in_out_stream(terminal, stdin, None))
@@ -105,13 +110,13 @@ def terminal_playback(program, json):
                 _feedback_to_user(_in_out_stream(terminal, None, None))
 
 
-def terminal_validate(program, json):
+def terminal_validate(program, json):  # TODO: rename 'Validate'
     if json is None:
         raise Exception("-j, --json needed!")
     with open(json, 'r') as fp:
         captured = json_load(fp)
 
-        class DB:
+        class DB:  # TODO: Rename 'TerminalValidateStatus'
             _now = 0
             _max = len(captured)
             _retries = 0
@@ -119,7 +124,7 @@ def terminal_validate(program, json):
             _borrow = None
         db = DB()
         with PC(program, logfile=open("test.log", "wb")) as terminal:
-            db._borrow = terminal.run()  # TODO
+            db._borrow = terminal.run()
             stdin = None
             expected = None
             while db._now < db._max:

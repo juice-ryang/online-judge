@@ -133,7 +133,7 @@ class ProcessCapsule(object):
         det = Chardet(wanted)
         if det['encoding']:
             return wanted.decode(det['encoding'])
-        return wanted.decode('utf-8')
+        return wanted.decode('utf-8')  # TODO
 
     def is_dead(self):
         return not self._runtime.isalive()
