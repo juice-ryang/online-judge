@@ -1,6 +1,7 @@
 import os
 import time
 
+from celery import Celery
 from flask import (
     Flask,
     url_for,
@@ -13,8 +14,30 @@ from flaskext.markdown import Markdown
 import problems
 
 app = Flask(__name__)
+# app.config['CELERY_BROKER_URL'] = 'amqp://guest:guest@localhost//'
+# app.config['CELERY_RESULT_BACKEND'] = 'amqp://'
+
+celery = Celery(
+        app.name,
+        # broker=app.config['CELERY_BROKER_URL'],
+        # backend=app.config['CELERY_RESULT_BACKEND'],
+)
+celery.conf.update(app.config)
+
 
 Markdown(app)
+
+
+@celery.task
+def task(a, b):
+    return a+b
+
+
+@app.route('/test')
+def test():
+    test = task.delay(10, 20)
+    return test.id
+
 
 @app.route('/')
 def index():
@@ -23,9 +46,11 @@ def index():
             problemsets = problems.get_all_sets()
     ), 200
 
+
 @app.route('/favicon.ico')
 def favicon():
     return redirect('/static/favicon.ico')
+
 
 @app.route('/<problemset>/')
 def problemset(problemset):
@@ -57,6 +82,7 @@ def submit():
     f.save(os.path.join('./UPLOADED/', filename))
 
     return 'submit!'
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
