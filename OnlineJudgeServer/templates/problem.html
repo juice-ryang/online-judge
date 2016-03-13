@@ -8,7 +8,7 @@
   <blockquote class="blockquote"><b>Problem Description</b></blockquote> 
   <blockquote class="blockquote" style="margin-bottom:40px">{{ descrpition|markdown }}</blockquote>
   <p><strong>Upload file to check</strong></p>
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data" action="{{ submit_url }}">
     <input type="file" id="fileupload" class="file" name="upfile">
   </form>
 {% endblock %}
