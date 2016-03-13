@@ -1,6 +1,7 @@
 from flask import (
     Flask,
     render_template,
+    redirect,
 )
 from flaskext.markdown import Markdown
 
@@ -17,6 +18,9 @@ def index():
             problemsets = problems.get_all_sets()
     ), 200
 
+@app.route('/favicon.ico')
+def favicon():
+    return redirect('/static/favicon.ico')
 
 @app.route('/<problemset>/')
 def problemset(problemset):
