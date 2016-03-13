@@ -7,51 +7,26 @@
   </ol>
   <blockquote class="blockquote"><b>Problem Description</b></blockquote> 
   <blockquote class="blockquote" style="margin-bottom:40px">{{ descrpition|markdown }}</blockquote>
-  <button type="button" class="btn btn-primary btn-block" data-toggle="modal" data-target="#myModal"> Check </button>
-  <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-          <h4 class="modal-title" id="myModalLabel">
-            Submit Your Code<br><b>Be Careful: Submitted code cannot be retrieved.</b>
-          </h4>
-        </div>
-        <div class="modal-body">
-          <textarea id="codearea" name="codearea"></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary">Submit</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <p><strong>Upload file to check</strong></p>
+  <form method="POST" enctype="multipart/form-data">
+    <input type="file" id="fileupload" class="file" name="upfile">
+  </form>
 {% endblock %}
+
 {% block __bootstrap__script %}
-  <script type="text/javascript" src="/static/codemirror/lib/codemirror.js"></script>
-  <script type="text/javascript" src="/static/codemirror/mode/python/python.js"></script>
-  <link type="text/css" rel="stylesheet" href="/static/codemirror/lib/codemirror.css">
-  <link type="text/css" rel="stylesheet" href="/static/codemirror/theme/elegant.css">
-  <link rel="stylesheet" type="text/css" href="/static/custom-codemirror.css">
+  <link href="/static/bootstrap-fileinput/css/fileinput.min.css" media="all" rel="stylesheet" type="text/css" />
+  <script src="/static/bootstrap-fileinput/js/fileinput.min.js"></script>
   <script type="text/javascript">
-    var myCodeMirror = CodeMirror(function(elt)
-          {
-            var myTextArea = document.getElementById("codearea");
-            myTextArea.parentNode.replaceChild(elt, myTextArea);
-          },
-          {
-            mode: "python",
-            matchBrackets: true,
-            theme: "elegant",
-            indentUnit: 4,
-            autoCloseBrackets: true,
-            autofocus: true,
-            viewportMargin: Infinity,
-            lineNumbers: true,
-            value: "# Type your python code here\n",
-          });
+  $('#fileupload').fileinput({
+      'showPreview': false,
+      'showCancel': false,
+      'allowedFileExtensions': ['py','txt'],
+      'layoutTemplates': {progress:''},
+      });
+  $('#fileupload').on('fileuploaded', function(event, data, previewId, index) {
+      var form = data.form, files = data.files, extra = data.extra,
+      response = data.response, reader = data.reader;
+      console.log('File uploaded triggered');
+      });
   </script>
 {% endblock %}
