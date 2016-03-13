@@ -3,3 +3,4 @@ pexpect
 click
 flask
 Flask-Markdown
+celery
