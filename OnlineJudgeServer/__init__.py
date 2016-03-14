@@ -33,7 +33,7 @@ app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
-app.config['PORT'] = int(os.environ.get('PORT', 5000))
+app.config['PORT'] = int(os.environ.get('PORT', 8000))
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
@@ -66,7 +66,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
 
     if not previous_return:
         requests.post(
-            root + "/api/start/",
+            "%s/api/start/" % (root,),
             data={
                 'filename': filename,
                 'N': N,
@@ -83,7 +83,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
             func = this.__name__
             if func == "_START":
                 requests.post(
-                    root + "/api/start_tc/",
+                    "%s/api/start_tc/" % (root,),
                     data={
                         'filename': filename,
                         'idx': idx,
@@ -118,7 +118,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
             'output': ''.join(reported_stdout),
         }
         requests.post(
-            root + "/api/testcase/",
+            "%s/api/testcase/" % (root,),
             data=data,
         )
         raise Failed
@@ -131,7 +131,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
             'output': 'nope',
         }
         requests.post(
-            root + "/api/testcase/",
+            "%s/api/testcase/" % (root,),
             data=data,
         )
     return data
@@ -229,7 +229,6 @@ def start_tc():
 
 @app.route('/api/testcase/', methods=['POST'])
 def resulttestcase():
-    print(request.form)
     output = request.form['output']
     emit('judging testcase', {
                 'idx': request.form['idx'],
