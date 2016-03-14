@@ -238,16 +238,25 @@ def start_tc():
 
 @app.route('/api/testcase/', methods=['POST'])
 def resulttestcase():
+    
+    expected = list(request.form['expected'])
+    while expected.count('\n'):
+        expected[expected.index('\n')] = '<br>'
+    while expected.count('\r'):
+        expected.remove('\r')
+    expected = ''.join(expected)
+
     output = list(request.form['output'])
     while output.count('\n'):
         output[output.index('\n')] = '<br>'
     while output.count('\r'):
         output.remove('\r')
     output = ''.join(output)
+    
     emit('judging testcase', {
                 'idx': request.form['idx'],
                 'pass': request.form['status'], 
-                'expected': request.form['expected'],
+                'expected': expected,
                 'output': output
                 },
             room=request.form['filename'], namespace='/test')
