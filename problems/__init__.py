@@ -43,13 +43,10 @@ def get_testcase_for_judging(problemset, problem):
     d['testcases'] = list()
     i = 0
     while True:
-        t = list()
-        for e in l:
-            if e.split('/')[-1][0:2] == '{0:0=2d}'.format(i):
-                t.append(e)
+        t = [e for e in l if e.split('/')[-1][0:2] == '{0:0=2d}'.format(i)]
         if not t:
             break
-        d['testcases'].append(tuple(sorted(t)))      
+        d['testcases'].append({e.split('.')[-1]:e for e in t})
         i += 1
     d['N'] = i
 
