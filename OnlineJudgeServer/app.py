@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 
 from celery import Celery
 from flask import (
@@ -149,7 +150,7 @@ def problem_submit(problemset, problem):
 #@app.route('/submit/', methods=['POST'])
 def submit():
     f = request.files['upfile']
-    filename = str(time.time())
+    filename = str(uuid.uuid4())
     if not os.path.exists('./UPLOADED/'):
         os.makedirs('./UPLOADED/')
     f.save(os.path.join('./UPLOADED/', filename))
