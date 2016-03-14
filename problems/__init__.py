@@ -36,4 +36,24 @@ def get_problem_description(problemset, problem):
     return None
 
 
+def get_testcase_for_judging(problemset, problem):
+    from glob import glob
+    d = dict()
+    l = list(glob('problems/'+problemset+'/'+problem+'/*'))
+    d['testcases'] = list()
+    i = 0
+    while True:
+        t = list()
+        for e in l:
+            if e.split('/')[-1][0:2] == '{0:0=2d}'.format(i):
+                t.append(e)
+        if not t:
+            break
+        d['testcases'].append(tuple(sorted(t)))      
+        i += 1
+    d['N'] = i
+
+    return d
+
+
 __search__()
