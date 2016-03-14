@@ -53,7 +53,7 @@
 </div>'));
           }
         if (total_testcase === 0) {
-          $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-primary text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote">' + {{ problem }} + ' from ' + {{ problemset }} + '</blockquote></div>'));
+          $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-primary text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
         }
         });
     });
