@@ -36,35 +36,43 @@ celery.conf.update(app.config)
 Markdown(app)
 
 
-def report(this):
-    def _(*args, **kwargs):
-        out = this(*args, **kwargs)
-        func = this.__name__
-        if func == "_FAIL":
-            pass
-        elif func == '_PASS':
-            pass
-        return out
-    return _
 
 
-# WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 def task_judge(problemset, problem, filename):
     DB = problems.get_testcase_for_judging(problemset, problem)
     subtasks = chain(
         [subtask_judge.s(
             filename=filename,
+            N=DB['N'],
             idx=idx,
             json=tc['json']) for idx, tc in enumerate(DB['testcases'])]
     )
     return subtasks
 
 
-@celery.task(track_started=True, ignore_result=False)
-def subtask_judge(previous_return=None, **kwargs):
+# WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
+@celery.task(bind=True, track_started=True, ignore_result=False)
+def subtask_judge(self, previous_return=None, **kwargs):
     filename = kwargs['filename']
     idx = kwargs['idx']
     json = kwargs['json']
+    N = kwargs['N']
+
+    class JudgeFailed(Exception):
+        pass
+
+    def report(this):
+        def _(*args, **kwargs):
+            global is_failed
+            out = this(*args, **kwargs)
+            func = this.__name__
+            if func == "_FAIL":
+                raise JudgeFailed()
+            elif func == '_PASS':
+                pass
+            return out
+        return _
+
     with open('./UPLOADED/' + filename + '.log', 'wb') as log:
         Validate(
             this_program='./UPLOADED/%s' % (filename,),
@@ -73,49 +81,7 @@ def subtask_judge(previous_return=None, **kwargs):
             report=report,
             python=app.config['VIRTUAL_ENV'],
         )
-    return 'done %s json %s' % (filename, idx)
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
-
-
-@app.route('/status/<task_id>/')
-def status(task_id):
-    _task = celery.AsyncResult(task_id)
-    if _task.state == 'STARTED':
-        response = {
-            'state': _task.state,
-            'current': 0,
-            'total': 1,
-            'statue': 'Started...',
-        }
-    elif _task.state == 'PENDING':
-        response = {
-            'state': _task.state,
-            'current': 0,
-            'total': 1,
-            'status': 'Pending...',
-        }
-    elif _task.state == 'SUCCESS':
-        response = {
-            'state': _task.state,
-            'current': 1,
-            'total': 1,
-            'status': _task.info,
-        }
-    elif _task.state != 'FAILURE':
-        response = {
-            'state': _task.state,
-            'current': _task.info.get('current', 0),
-            'total': _task.info.get('total', 1),
-            'status': _task.info.get('status', ''),
-        }
-    else:
-        response = {
-            'state': _task.state,
-            'current': 1,
-            'total': 1,
-            'status': str(_task.info),
-        }
-    return jsonify(response)
 
 
 @app.route('/')
