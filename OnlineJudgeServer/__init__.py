@@ -236,7 +236,12 @@ def start_tc():
 
 @app.route('/api/testcase/', methods=['POST'])
 def resulttestcase():
-    output = request.form['output']
+    output = list(request.form['output'])
+    while output.count('\n'):
+        output[output.index('\n')] = '<br>'
+    while output.count('\r'):
+        output.remove('\r')
+    output = ''.join(output)
     emit('judging testcase', {
                 'idx': request.form['idx'],
                 'pass': request.form['status'], 
