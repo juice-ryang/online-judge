@@ -6,6 +6,7 @@ from celery import (
     Celery,
     chain,
 )
+from celery.task.http import URL
 from flask import (
     Flask,
     session,
@@ -30,10 +31,18 @@ app.config['CELERY_RESULT_SERIALIZER'] = 'json'
 app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
+app.config['CELERY_IMPORTS'] = ['celery.task.http']
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
+TaskBase = celery.Task
+class ContextTask(TaskBase):
+    abstract = True
+    def __call__(self, *args, **kwargs):
+        with app.app_context():
+            return TaskBase.__call__(self, *args, **kwargs)
+celery.Task = ContextTask
 
 socketio = SocketIO(app)
 Markdown(app)
@@ -69,7 +78,9 @@ def subtask_judge(self, previous_return=None, **kwargs):
             global is_failed
             out = this(*args, **kwargs)
             func = this.__name__
-            if func == "_FAIL":
+            if func == "_START":
+                URL("http://localhost:5000/result/test/%s" % (filename,)).delay()
+            elif func == "_FAIL":
                 raise JudgeFailed()
             elif func == '_PASS':
                 pass
@@ -138,10 +149,10 @@ def problem_submit(problemset, problem):
     else:
         filename = submit()
         tasks = task_judge(problemset, problem, filename).delay()
-        return jsonify({
-            'filename': filename,
-            'task_id': tasks.id,
-        })
+        return render_template(
+                'result.html',
+                fileid=filename,
+        )
 
 
 def submit():
@@ -162,8 +173,9 @@ def result():
     ), 200
 
 
-@app.route('/result/test/')
-def resulttest():
+@app.route('/result/test/<filename>')
+def resulttest(filename):
+    start_judge(filename)
     return 'tested'
 
 

@@ -5,3 +5,4 @@ flask
 Flask-Markdown
 celery
 flower
+flask-socketio
