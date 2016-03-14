@@ -269,46 +269,49 @@ def Validate(this_program, from_json,
             return buf.stdout
 
         with Capsule(this_program, logfile=logfile, python=python) as capsule:
-            _START()
-            while now.N < now.MAX:
-                if not now.RETRIES:
-                    _, buf.stdout = _TerminalCapsuleUtils.stream(
-                        capsule,
-                        _GET_STDIN(),
-                        timeout=timeout,
-                    )
-                else:
-                    _, buf.stdout = _TerminalCapsuleUtils.stream(
-                        capsule,
-                        None,
-                        timeout=timeout,
-                    )
-                _GOT_STDOUT()
-                if buf.stdout == buf.expected:
-                    _PASS()
-                else:
-                    if buf.stdout:  # XXX: Partial Check
-                        if len(buf.stdout) < len(buf.expected):
-                            if buf.expected[:len(buf.stdout)] == buf.stdout:
-                                is_failed = _PARTIAL()
-                                if is_failed:
+            try:
+                _START()
+                while now.N < now.MAX:
+                    if not now.RETRIES:
+                        _, buf.stdout = _TerminalCapsuleUtils.stream(
+                            capsule,
+                            _GET_STDIN(),
+                            timeout=timeout,
+                        )
+                    else:
+                        _, buf.stdout = _TerminalCapsuleUtils.stream(
+                            capsule,
+                            None,
+                            timeout=timeout,
+                        )
+                    _GOT_STDOUT()
+                    if buf.stdout == buf.expected:
+                        _PASS()
+                    else:
+                        if buf.stdout:  # XXX: Partial Check
+                            if len(buf.stdout) < len(buf.expected):
+                                if buf.expected[:len(buf.stdout)] == buf.stdout:
+                                    is_failed = _PARTIAL()
+                                    if is_failed:
+                                        break
+                                else:
+                                    _FAIL()
+                                    break
+                            elif len(buf.stdout) > len(buf.expected):
+                                if buf.stdout[:len(buf.expected)] == buf.expected:
+                                    _LEFT()
+                                else:
+                                    _FAIL()
                                     break
                             else:
                                 _FAIL()
                                 break
-                        elif len(buf.stdout) > len(buf.expected):
-                            if buf.stdout[:len(buf.expected)] == buf.expected:
-                                _LEFT()
-                            else:
-                                _FAIL()
-                                break
                         else:
-                            _FAIL()
-                            break
-                    else:
-                        is_failed = _RETRIES()
-                        if is_failed:
-                            break
+                            is_failed = _RETRIES()
+                            if is_failed:
+                                break
+            except Capsule.DEAD as dying_message:
+                _FAIL()
 
 
 if __name__ == "__main__":
