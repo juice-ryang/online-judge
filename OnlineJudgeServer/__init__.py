@@ -19,7 +19,7 @@ from flask import (
     current_app,
 )
 from flaskext.markdown import Markdown
-from flask_socketio import SocketIO, emit, join_room, rooms
+from flask_socketio import SocketIO, emit, join_room, rooms, disconnect
 
 from . import problems
 from .process_capsule import DEFAULT_PYTHON
@@ -245,3 +245,9 @@ app.config['SECRET_KEY'] = 'secret!'
 @socketio.on('join', namespace='/test')
 def join(message):
     join_room(message['room'])
+
+
+@socketio.on('leave', namespace='/test')
+def leave(message):
+    leave_room(message['room'])
+    disconnect()

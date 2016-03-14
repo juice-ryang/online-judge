@@ -30,6 +30,7 @@
             $('#' + msg.idx).replaceWith('<div class="card card-inverse card-success text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PASS</b></blockquote></div>');
             if (total_testcase === 0) {
               $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-primary text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
+              socket.emit('leave', {room: '{{ fileid }}'});
             }
           }
           else {
@@ -55,6 +56,7 @@
   </div>\
 </div>'));
           $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-warning text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
+          socket.emit('leave', {room: '{{ fileid }}'});
           }
         });
     });
