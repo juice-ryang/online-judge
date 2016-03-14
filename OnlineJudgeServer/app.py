@@ -208,9 +208,35 @@ def result():
     ), 200
 
 
-@app.route('/result/test/<filename>')
-def resulttest(filename):
-    start_judge(filename)
+
+@app.route('/api/start/', methods=["POST"])
+def resulttest():
+    emit('start judge',
+            {'N': request.form['N']},
+            room = request.form['filename'],
+            namespace='/test'
+    )
+
+
+@app.route('/api/start_tc/', methods=['POST'])
+def start_tc():
+    emit('start testcase',
+            {'idx': request.form['idx']},
+            room = request.form['filename'],
+            namespace='/test'
+    )
+
+
+@app.route('/api/testcase/', methods=['POST'])
+def resulttestcase():
+    output = request.form['output']
+    emit('judging testcase', {
+                'idx': request.form['idx'],
+                'pass': request.form['status'], 
+                'expected': request.form['expected'],
+                'output': output
+                },
+            room=request.form['filename'], namespace='/test')
     return 'tested'
 
 
@@ -218,16 +244,6 @@ app.config['SECRET_KEY'] = 'secret!'
 @socketio.on('join', namespace='/test')
 def join(message):
     join_room(message['room'])
-
-
-@socketio.on('my event', namespace='/test')
-def my_event(message):
-    print(str(message))
-    start_judge()
-
-
-def start_judge(fileid):
-    emit('start judge', {'data':'start_judge'}, room=fileid, namespace='/test')
 
 
 if __name__ == "__main__":

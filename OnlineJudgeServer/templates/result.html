@@ -3,30 +3,54 @@
   <div class="alert alert-info" id="headsup" role="alert">
     <strong id="headsup-text">Judging others... Please wait</strong>
   </div>
-  <button type="button" class="btn btn-primary" id="testbutton">Primary</button>
+  <div id="testcase"></div>
 {% endblock %}
 
 {% block __bootstrap__script %}
   <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
   <script type="text/javascript">
+    var total_testcase = 0;
     $(document).ready(function(){
         var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
         socket.emit('join', {room: '{{ fileid }}'});
-
         socket.on('start judge', function(msg) {
-            $('#headsup').removeClass('alert-info')
-            $('#headsup').addClass('alert-success')
-            $('#headsup-text').text('Judging Start!')
+          total_testcase = msg.N;
+          $('#headsup').removeClass('alert-info')
+          $('#headsup').addClass('alert-success')
+          $('#headsup-text').text('Judging Start!')
         });
 
-
-
-        socket.on('my response', function(msg) {
-            console.log('Received #' + msg.count + ': ' + msg.data);
+        socket.on('start testcase', function(msg) {
+            $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-warning text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PENDING</b></blockquote></div>'));
         });
-        $('#testbutton').click(function(event) {
-            socket.emit('my event', {data: "input ok?"});
-            return false;
+        
+        socket.on('judging testcase', function(msg) {
+          if(msg.pass) {
+            $('#' + msg.idx).replaceWith('<div class="card card-inverse card-success text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PASS</b></blockquote></div>');
+          }
+          else {
+            $('#' + msg.idx).replaceWith('<div class="card card-inverse card-danger text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>FAIL</b></blockquote></div>');
+
+            $('#testcase').append($('\
+<div class="card-group">\
+  <div class="card">\
+    <div class="card-header">Expected</div>\
+    <div class="card-block">\
+      <blockquote class="card-blockquote">\
+        <p>' + msg.expected + '</p>\
+      </blockquote>\
+    </div>\
+  </div>\
+  <div class="card">\
+    <div class="card-header">Output</div>\
+    <div class="card-block">\
+      <blockquote class="card-blockquote">\
+        <p>' + msg.output + '</p>\
+      </blockquote>\
+    </div>\
+  </div>\
+</div>'));
+          }
         });
     });
   </script>
