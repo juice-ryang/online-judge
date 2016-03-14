@@ -17,16 +17,18 @@
   <link href="/static/bootstrap-fileinput/css/fileinput.min.css" media="all" rel="stylesheet" type="text/css" />
   <script src="/static/bootstrap-fileinput/js/fileinput.min.js"></script>
   <script type="text/javascript">
-  $('#fileupload').fileinput({
-      'showPreview': false,
-      'showCancel': false,
-      'allowedFileExtensions': ['py','txt'],
-      'layoutTemplates': {progress:''},
-      });
-  $('#fileupload').on('fileuploaded', function(event, data, previewId, index) {
-      var form = data.form, files = data.files, extra = data.extra,
-      response = data.response, reader = data.reader;
-      console.log('File uploaded triggered');
-      });
+    $(document).ready(function(){
+      $('#fileupload').fileinput({
+          'showPreview': false,
+          'showCancel': false,
+          'allowedFileExtensions': ['py','txt'],
+          'layoutTemplates': {progress:''},
+          });
+      $('#fileupload').on('fileuploaded', function(event, data, previewId, index) {
+          var form = data.form, files = data.files, extra = data.extra,
+          response = data.response, reader = data.reader;
+          console.log('File uploaded triggered');
+          });
+    });
   </script>
 {% endblock %}
