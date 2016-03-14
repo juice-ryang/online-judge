@@ -33,13 +33,17 @@ app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 celery = Celery(app.name)
 celery.conf.update(app.config)
 
-
 Markdown(app)
+
 
 def report(this):
     def _(*args, **kwargs):
         out = this(*args, **kwargs)
-        print(this.__name__)
+        func = this.__name__
+        if func == "_FAIL":
+            pass
+        elif func == '_PASS':
+            pass
         return out
     return _
 
@@ -118,7 +122,7 @@ def status(task_id):
 def index():
     return render_template(
             'index.html',
-            problemsets = problems.get_all_sets()
+            problemsets=problems.get_all_sets(),
     ), 200
 
 
@@ -131,29 +135,37 @@ def favicon():
 def problemset(problemset):
     return render_template(
             'problemset.html',
-            problemset = problemset,
-            problems = problems.get_problems(problemset)
+            problemset=problemset,
+            problems=problems.get_problems(problemset),
     ), 200
 
 
 @app.route('/<problemset>/<problem>/', methods=['GET', 'POST'])
 def problem(problemset, problem):
-    if request.method == 'GET' :
+    if request.method == 'GET':
         return render_template(
                 'problem.html',
-                problemset = problemset,
-                problem = problem,
-                descrpition = problems.get_problem_description(problemset, problem),
-                submit_url = url_for('problem_submit', problemset=problemset, problem=problem),
+                problemset=problemset,
+                problem=problem,
+                descrpition=problems.get_problem_description(
+                    problemset, problem
+                ),
+                submit_url=url_for(
+                    'problem_submit',
+                    problemset=problemset,
+                    problem=problem,
+                ),
         ), 200
-    else :
+    else:
         return redirect(url_for('submit'), code=307)
 
 
 @app.route('/<problemset>/<problem>/submit', methods=['GET', 'POST'])
 def problem_submit(problemset, problem):
     if request.method == 'GET':
-        return redirect(url_for('problem', problemset=problemset, problem=problem))
+        return redirect(
+                url_for('problem', problemset=problemset, problem=problem)
+        )
     else:
         filename = submit()
         tasks = task_judge(problemset, problem, filename).delay()
@@ -163,7 +175,6 @@ def problem_submit(problemset, problem):
         })
 
 
-#@app.route('/submit/', methods=['POST'])
 def submit():
     f = request.files['upfile']
     filename = str(uuid.uuid4())
