@@ -28,6 +28,9 @@
           total_testcase--;
           if(msg.pass === "True") {
             $('#' + msg.idx).replaceWith('<div class="card card-inverse card-success text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PASS</b></blockquote></div>');
+            if (total_testcase === 0) {
+              $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-primary text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
+            }
           }
           else {
             $('#' + msg.idx).replaceWith('<div class="card card-inverse card-danger text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>FAIL</b></blockquote></div>');
@@ -51,10 +54,8 @@
     </div>\
   </div>\
 </div>'));
+          $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-warning text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
           }
-        if (total_testcase === 0) {
-          $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-primary text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
-        }
         });
     });
   </script>
