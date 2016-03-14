@@ -1,0 +1,24 @@
+{% extends "__bootstrap.html" %}
+{% block __bootstrap__body %}
+  <button type="button" class="btn btn-primary" id="testbutton">Primary</button>
+{% endblock %}
+
+{% block __bootstrap__script %}
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function(){
+        var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
+        socket.emit('join', {room: '{{ fileid }}'});
+        socket.on('my response', function(msg) {
+            console.log('Received #' + msg.count + ': ' + msg.data);
+        });
+        socket.on('start judge', function(msg) {
+            console.log('asdf');
+        });
+        $('#testbutton').click(function(event) {
+            socket.emit('my event', {data: "input ok?"});
+            return false;
+        });
+    });
+  </script>
+{% endblock %}
