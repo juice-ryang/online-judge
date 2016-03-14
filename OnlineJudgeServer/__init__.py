@@ -19,7 +19,14 @@ from flask import (
     current_app,
 )
 from flaskext.markdown import Markdown
-from flask_socketio import SocketIO, emit, join_room, rooms, disconnect
+from flask_socketio import (
+        SocketIO,
+        emit,
+        join_room,
+        rooms,
+        disconnect,
+        leave_room,
+)
 
 from . import problems
 from .process_capsule import DEFAULT_PYTHON
