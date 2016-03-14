@@ -8,7 +8,10 @@ stop:
 	supervisorctl stop all
 
 debug_corp:
-	mosh corp.judge.vita500.ml --ssh="ssh -L 15673:127.0.0.1:15672" sudo su - onlinejudge
+	mosh corp.judge.vita500.ml sudo su - onlinejudge
+
+debug_corp_port:
+	ssh -L5556:127.0.0.1:5555 -L15673:127.0.0.1:15672 corp.judge.vita500.ml
 
 
 install reinstall update: .python-version

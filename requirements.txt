@@ -4,3 +4,4 @@ click
 flask
 Flask-Markdown
 celery
+flower

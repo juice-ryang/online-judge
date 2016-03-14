@@ -119,10 +119,10 @@ _Registered = {}
 
 
 @_TerminalCapsuleUtils.register(_TerminalCapsuleUtils.pprintify)
-def Capture(this_program, to_json=None, logfile=None, timeout=None):
+def Capture(this_program, to_json=None, logfile=None, timeout=None, python='python'):
     """Run `this_program` by ProcessCapsule and Capture I/O `to_json`."""
     captured = []
-    with Capsule(this_program, logfile=logfile) as capsule:
+    with Capsule(this_program, logfile=logfile, python=python) as capsule:
         capsule.run(with_check=False)
         while not capsule.is_dead():
             _TerminalCapsuleUtils.endpoints(
@@ -139,14 +139,14 @@ def Capture(this_program, to_json=None, logfile=None, timeout=None):
 
 
 @_TerminalCapsuleUtils.register()
-def Playback(this_program, from_json, logfile=None, timeout=None):
+def Playback(this_program, from_json, logfile=None, timeout=None, python='python'):
     """Read I/O `from_json` and Playback it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")
 
     with open(from_json, 'r') as fp:
         captured = json_load(fp)
-        with Capsule(this_program, logfile=logfile) as capsule:
+        with Capsule(this_program, logfile=logfile, python=python) as capsule:
             capsule.run(with_check=False)
             for captured_stdin, _ in captured:
                 _TerminalCapsuleUtils.endpoints(
@@ -169,7 +169,7 @@ def Playback(this_program, from_json, logfile=None, timeout=None):
 @_TerminalCapsuleUtils.register()
 def Validate(this_program, from_json,
              logfile=None, max_retries=50, timeout=None,
-             report=_TerminalCapsuleUtils.report):
+             report=_TerminalCapsuleUtils.report, python='python'):
     """Read I/O `from_json` and Validate it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")
@@ -260,7 +260,7 @@ def Validate(this_program, from_json,
                 buf.borrow = None
             print('Output %d %s' % (now.N, buf.stdout.encode('utf-8')))
 
-        with Capsule(this_program, logfile=logfile) as capsule:
+        with Capsule(this_program, logfile=logfile, python=python) as capsule:
             _START()
             while now.N < now.MAX:
                 if not now.RETRIES:

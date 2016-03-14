@@ -27,13 +27,9 @@ app.config['CELERY_RESULT_SERIALIZER'] = 'json'
 app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
-app.config['VIRTUAL_ENV'] = os.environ.get('VIRTUAL_ENV')
+app.config['VIRTUAL_ENV'] = os.path.join(os.environ['VIRTUAL_ENV'], 'bin/python')
 
-celery = Celery(
-        app.name,
-        # broker=app.config['CELERY_BROKER_URL'],
-        # backend=app.config['CELERY_RESULT_BACKEND'],
-)
+celery = Celery(app.name)
 celery.conf.update(app.config)
 
 
@@ -62,6 +58,7 @@ def subtask_judge(previous_return=None, **kwargs):
             this_program='./UPLOADED/%s' % (filename,),
             from_json=json,
             logfile=log,
+            python=app.config['VIRTUAL_ENV'],
         )
     return 'done %s json %s' % (filename, idx)
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
@@ -70,8 +67,14 @@ def subtask_judge(previous_return=None, **kwargs):
 @app.route('/status/<task_id>/')
 def status(task_id):
     _task = celery.AsyncResult(task_id)
-    # TODO START
-    if _task.state == 'PENDING':
+    if _task.state == 'STARTED':
+        response = {
+            'state': _task.state,
+            'current': 0,
+            'total': 1,
+            'statue': 'Started...',
+        }
+    elif _task.state == 'PENDING':
         response = {
             'state': _task.state,
             'current': 0,
@@ -145,10 +148,9 @@ def problem_submit(problemset, problem):
     else:
         filename = submit()
         tasks = task_judge(problemset, problem, filename).delay()
-        print(dir(tasks))
         return jsonify({
             'filename': filename,
-            #'subtasks': [subtask.id for subtask in tasks.children],
+            'task_id': tasks.id,
         })
 
 

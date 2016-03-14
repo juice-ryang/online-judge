@@ -149,10 +149,15 @@ class ProcessCapsule(object):
 
 
 class PythonCapsule(ProcessCapsule):
+    def __init__(self, program, logfile=None, python='python'):
+        super().__init__(program, logfile=logfile)
+        self.python = python
+
     def __cmd__(self):
         # return 'bash -c "export"'
-        return 'bash -c "/usr/bin/python3 -u %s 2>&1 #%s"' % (self.program, self)
+        #return 'bash -c "/usr/bin/python3 -u %s 2>&1 #%s"' % (self.program, self)
         #return 'bash -c "/usr/local/bin/python3 -u %s 2>&1 #%s"' % (self.program, self)
+        return 'bash -c "%s -u %s 2>&1 #%s"' % (self.python, self.program, self)
 
 
 def prompt_spliter(result, cmd='', prompt='', splits='\n'):
