@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+from json import load
 
 from celery import (
     Celery,
@@ -31,23 +32,13 @@ app.config['CELERY_RESULT_SERIALIZER'] = 'json'
 app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
-app.config['CELERY_IMPORTS'] = ['celery.task.http']
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
-TaskBase = celery.Task
-class ContextTask(TaskBase):
-    abstract = True
-    def __call__(self, *args, **kwargs):
-        with app.app_context():
-            return TaskBase.__call__(self, *args, **kwargs)
-celery.Task = ContextTask
 
 socketio = SocketIO(app)
 Markdown(app)
-
-
 
 
 def task_judge(problemset, problem, filename):
@@ -65,36 +56,80 @@ def task_judge(problemset, problem, filename):
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 @celery.task(bind=True, track_started=True, ignore_result=False)
 def subtask_judge(self, previous_return=None, **kwargs):
+    import requests
     filename = kwargs['filename']
     idx = kwargs['idx']
     json = kwargs['json']
     N = kwargs['N']
 
+    if not previous_return:
+        requests.post(
+                "http://localhost:5000/api/start/",
+            data={
+                'filename': filename,
+                'N': N,
+            }
+        )
+
     class JudgeFailed(Exception):
         pass
 
+    reported_stdout = []
     def report(this):
         def _(*args, **kwargs):
-            global is_failed
             out = this(*args, **kwargs)
             func = this.__name__
             if func == "_START":
-                URL("http://localhost:5000/result/test/%s" % (filename,)).delay()
+                requests.post(
+                    "http://localhost:5000/api/start_tc/",
+                    data={
+                        'filename': filename,
+                        'idx': idx,
+                    }
+                )
             elif func == "_FAIL":
                 raise JudgeFailed()
-            elif func == '_PASS':
-                pass
+            elif func == "_GOT_STDOUT":
+                reported_stdout.append(out)
             return out
         return _
 
-    with open('./UPLOADED/' + filename + '.log', 'wb') as log:
-        Validate(
-            this_program='./UPLOADED/%s' % (filename,),
-            from_json=json,
-            logfile=log,
-            report=report,
-            python=app.config['VIRTUAL_ENV'],
+    try:
+        with open('./UPLOADED/%s.%s.log' % (filename, idx), 'wb') as log:
+            Validate(
+                this_program='./UPLOADED/%s' % (filename,),
+                from_json=json,
+                logfile=log,
+                report=report,
+                python=app.config['VIRTUAL_ENV'],
+            )
+    except JudgeFailed:
+        expected = None
+        with open(json) as fp:
+            stdouts = [stdout for _, stdout in load(fp)]
+            expected = ''.join(stdouts)
+        data = {
+            'filename': filename,
+            'idx': idx,
+            'status': False,
+            'expected': expected,
+            'output': ''.join(reported_stdout),
+        }
+        requests.post(
+            "http://localhost:5000/api/testcase/",
+            data=data,
         )
+    else:
+        data = {
+            'filename': filename,
+            'idx': idx,
+            'status': True,
+        }
+        requests.post(
+            "http://localhost:5000/api/testcase/",
+            data=data,
+        )
+    return data
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 
 

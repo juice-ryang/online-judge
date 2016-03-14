@@ -266,6 +266,7 @@ def Validate(this_program, from_json,
                 buf.stdout = buf.borrow + buf.stdout
                 buf.borrow = None
             print('Output %d %s' % (now.N, buf.stdout.encode('utf-8')))
+            return buf.stdout
 
         with Capsule(this_program, logfile=logfile, python=python) as capsule:
             _START()
