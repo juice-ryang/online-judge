@@ -2,7 +2,11 @@ import os
 import time
 import uuid
 
-from celery import Celery
+from celery import (
+    Celery,
+    group,
+    chain,
+)
 from flask import (
     Flask,
     url_for,
@@ -37,36 +41,32 @@ celery.conf.update(app.config)
 Markdown(app)
 
 
-@celery.task(ignore_result=True)
-def task_test(a, b):
-    return a+b
-
-
-@celery.task(ignore_result=True)
+# WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 def task_judge(problemset, problem, filename):
-    with open(filename + '.log', 'wb') as log:
+    DB = problems.get_testcase_for_judging(problemset, problem)
+    subtasks = group(
+        [subtask_judge.s(filename, idx, tc['json']) for idx, tc in enumerate(DB['testcases'])]
+    )
+    return subtasks
+
+
+@celery.task(track_started=True, ignore_result=False)
+def subtask_judge(filename, idx, json):
+    print(idx)
+    with open('./UPLOADED/' + filename + '.log', 'wb') as log:
         Validate(
             this_program='./UPLOADED/%s' % (filename,),
-            from_json='test.json',  # 12, 2
+            from_json=json,
             logfile=log,
         )
-    return 'done'
+    return 'done %s json %s' % (filename, idx)
+# WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 
 
-@app.route('/celery/task_test/')
-def celery_task_test():
-    return task_test.delay(10, 20).id
-
-
-@app.route('/status/<task_type>/<task_id>/')
-def status(task_type, task_id):
-    if task_type == "task_test":
-        task = task_test
-    elif task_type == "task_judge":
-        task = task_judge
-    else:
-        return 'Not Found', 404
-    _task = task.AsyncResult(task_id)
+@app.route('/status/<task_id>/')
+def status(task_id):
+    _task = celery.AsyncResult(task_id)
+    # TODO START
     if _task.state == 'PENDING':
         response = {
             'state': _task.state,
@@ -90,7 +90,7 @@ def status(task_type, task_id):
         }
     else:
         response = {
-            'state': task.state,
+            'state': _task.state,
             'current': 1,
             'total': 1,
             'status': str(_task.info),
@@ -140,10 +140,11 @@ def problem_submit(problemset, problem):
         return redirect(url_for('problem', problemset=problemset, problem=problem))
     else:
         filename = submit()
-        task_id = task_judge.delay(problemset, problem, filename).id
+        tasks = task_judge(problemset, problem, filename).delay()
+        print(dir(tasks.children))
         return jsonify({
             'filename': filename,
-            'task_id': task_id,
+            'subtasks': [subtask.id for subtask in tasks.children],
         })
 
 
