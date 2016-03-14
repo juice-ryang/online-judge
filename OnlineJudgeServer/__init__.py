@@ -21,9 +21,9 @@ from flask import (
 from flaskext.markdown import Markdown
 from flask_socketio import SocketIO, emit, join_room, rooms
 
-import problems
-from process_capsule import DEFAULT_PYTHON
-from terminal_capsule import Validate
+from . import problems
+from .process_capsule import DEFAULT_PYTHON
+from .terminal_capsule import Validate
 
 app = Flask(__name__)
 app.config['CELERY_ACCEPT_CONTENT'] = ['json']
@@ -245,9 +245,3 @@ app.config['SECRET_KEY'] = 'secret!'
 @socketio.on('join', namespace='/test')
 def join(message):
     join_room(message['room'])
-
-
-if __name__ == "__main__":
-    import eventlet
-    eventlet.monkey_patch()
-    socketio.run(app, debug=True, host="0.0.0.0", port=app.config['PORT'])

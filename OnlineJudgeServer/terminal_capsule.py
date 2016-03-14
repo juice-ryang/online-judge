@@ -10,7 +10,7 @@ from sys import (
 )
 from select import select as _select
 
-from process_capsule import (
+from .process_capsule import (
     PythonCapsule as Capsule,
     DEFAULT_PYTHON,
 )
