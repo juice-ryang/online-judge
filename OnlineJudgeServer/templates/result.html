@@ -1,5 +1,8 @@
 {% extends "__bootstrap.html" %}
 {% block __bootstrap__body %}
+  <div class="alert alert-info" id="headsup" role="alert">
+    <strong id="headsup-text">Judging others... Please wait</strong>
+  </div>
   <button type="button" class="btn btn-primary" id="testbutton">Primary</button>
 {% endblock %}
 
@@ -9,11 +12,17 @@
     $(document).ready(function(){
         var socket = io.connect('http://' + document.domain + ':' + location.port + '/test');
         socket.emit('join', {room: '{{ fileid }}'});
+
+        socket.on('start judge', function(msg) {
+            $('#headsup').removeClass('alert-info')
+            $('#headsup').addClass('alert-success')
+            $('#headsup-text').text('Judging Start!')
+        });
+
+
+
         socket.on('my response', function(msg) {
             console.log('Received #' + msg.count + ': ' + msg.data);
-        });
-        socket.on('start judge', function(msg) {
-            console.log('asdf');
         });
         $('#testbutton').click(function(event) {
             socket.emit('my event', {data: "input ok?"});

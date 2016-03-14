@@ -162,9 +162,8 @@ def result():
     ), 200
 
 
-
+@app.route('/result/test/')
 def resulttest():
-    emit('start judge', {'data':'start_judge'}, room='testid!!!', namespace='/test')
     return 'tested'
 
 
@@ -180,9 +179,8 @@ def my_event(message):
     start_judge()
 
 
-@socketio.on('start judge', namespace='/test')
-def start_judge(message):
-    emit('start judge', {'data':'start_judge'}, room='testid!!!', namespace='/test')
+def start_judge(fileid):
+    emit('start judge', {'data':'start_judge'}, room=fileid, namespace='/test')
 
 
 if __name__ == "__main__":
