@@ -1,7 +1,8 @@
 """Process Capsule: The PExpect Wrapper."""
 
 from errno import ESRCH as NoSuchProcess
-from os import kill
+from os import kill, environ
+from os.path import join
 from signal import SIGTERM as CTRL_C
 
 from chardet import detect as Chardet
@@ -148,16 +149,22 @@ class ProcessCapsule(object):
         """Fired when calling run() more than once."""
 
 
+DEFAULT_PYTHON = 'python'
+if environ['VIRTUAL_ENV']:
+    DEFAULT_PYTHON = join(environ['VIRTUAL_ENV'], 'bin/python')
+
+
 class PythonCapsule(ProcessCapsule):
-    def __init__(self, program, logfile=None, python='python'):
+    def __init__(self, program, logfile=None, python=DEFAULT_PYTHON):
         super().__init__(program, logfile=logfile)
         self.python = python
 
     def __cmd__(self):
-        # return 'bash -c "export"'
-        #return 'bash -c "/usr/bin/python3 -u %s 2>&1 #%s"' % (self.program, self)
-        #return 'bash -c "/usr/local/bin/python3 -u %s 2>&1 #%s"' % (self.program, self)
-        return 'bash -c "%s -u %s 2>&1 #%s"' % (self.python, self.program, self)
+        return 'bash -c "%s -u %s 2>&1 #%s"' % (
+            self.python,
+            self.program,
+            self,
+        )
 
 
 def prompt_spliter(result, cmd='', prompt='', splits='\n'):

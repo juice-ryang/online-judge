@@ -10,7 +10,10 @@ from sys import (
 )
 from select import select as _select
 
-from process_capsule import PythonCapsule as Capsule
+from process_capsule import (
+    PythonCapsule as Capsule,
+    DEFAULT_PYTHON,
+)
 
 __author__ = "Minho Ryang (minhoryang@gmail.com)"
 
@@ -46,6 +49,7 @@ class _TerminalCapsuleUtils(object):
         """
         def __init__(self, f):
             self.f = f
+            self.__name__ = f.__name__
 
         def __repr__(self):
             return self.f.__repr__()
@@ -119,7 +123,8 @@ _Registered = {}
 
 
 @_TerminalCapsuleUtils.register(_TerminalCapsuleUtils.pprintify)
-def Capture(this_program, to_json=None, logfile=None, timeout=None, python='python'):
+def Capture(this_program, to_json=None,
+            logfile=None, timeout=None, python=DEFAULT_PYTHON):
     """Run `this_program` by ProcessCapsule and Capture I/O `to_json`."""
     captured = []
     with Capsule(this_program, logfile=logfile, python=python) as capsule:
@@ -139,7 +144,8 @@ def Capture(this_program, to_json=None, logfile=None, timeout=None, python='pyth
 
 
 @_TerminalCapsuleUtils.register()
-def Playback(this_program, from_json, logfile=None, timeout=None, python='python'):
+def Playback(this_program, from_json,
+             logfile=None, timeout=None, python=DEFAULT_PYTHON):
     """Read I/O `from_json` and Playback it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")
@@ -169,7 +175,8 @@ def Playback(this_program, from_json, logfile=None, timeout=None, python='python
 @_TerminalCapsuleUtils.register()
 def Validate(this_program, from_json,
              logfile=None, max_retries=50, timeout=None,
-             report=_TerminalCapsuleUtils.report, python='python'):
+             report=_TerminalCapsuleUtils.report,
+             python=DEFAULT_PYTHON):
     """Read I/O `from_json` and Validate it to `this_program`."""
     if from_json is None:
         raise Exception("-j, --json needed!")

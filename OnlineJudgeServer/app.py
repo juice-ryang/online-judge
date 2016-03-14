@@ -18,6 +18,7 @@ from flask import (
 from flaskext.markdown import Markdown
 
 import problems
+from process_capsule import DEFAULT_PYTHON
 from terminal_capsule import Validate
 
 app = Flask(__name__)
@@ -27,13 +28,20 @@ app.config['CELERY_RESULT_SERIALIZER'] = 'json'
 app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
-app.config['VIRTUAL_ENV'] = os.path.join(os.environ['VIRTUAL_ENV'], 'bin/python')
+app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
 
 
 Markdown(app)
+
+def report(this):
+    def _(*args, **kwargs):
+        out = this(*args, **kwargs)
+        print(this.__name__)
+        return out
+    return _
 
 
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
@@ -58,6 +66,7 @@ def subtask_judge(previous_return=None, **kwargs):
             this_program='./UPLOADED/%s' % (filename,),
             from_json=json,
             logfile=log,
+            report=report,
             python=app.config['VIRTUAL_ENV'],
         )
     return 'done %s json %s' % (filename, idx)
