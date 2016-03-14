@@ -192,6 +192,8 @@ def problem_submit(problemset, problem):
         return render_template(
                 'result.html',
                 fileid=filename,
+                problemset=problemset,
+                problem=problem,
         )
 
 
@@ -203,15 +205,6 @@ def submit():
     f.save(os.path.join('./UPLOADED/', filename))
 
     return filename
-
-
-@app.route('/result/')
-def result():
-    return render_template(
-            'result.html',
-            fileid = "testid!!!",
-    ), 200
-
 
 
 @app.route('/api/start/', methods=["POST"])
