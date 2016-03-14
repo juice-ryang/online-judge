@@ -25,7 +25,7 @@
         });
         
         socket.on('judging testcase', function(msg) {
-          if(msg.pass) {
+          if(msg.pass === "True") {
             $('#' + msg.idx).replaceWith('<div class="card card-inverse card-success text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PASS</b></blockquote></div>');
           }
           else {

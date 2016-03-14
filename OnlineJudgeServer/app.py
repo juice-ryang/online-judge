@@ -33,6 +33,7 @@ app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
+app.config['PORT'] = int(os.environ.get('PORT', 5000))
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
@@ -61,10 +62,11 @@ def subtask_judge(self, previous_return=None, **kwargs):
     idx = kwargs['idx']
     json = kwargs['json']
     N = kwargs['N']
+    root = "http://localhost:%s" % (app.config['PORT'],)
 
     if not previous_return:
         requests.post(
-                "http://localhost:5000/api/start/",
+            root + "/api/start/",
             data={
                 'filename': filename,
                 'N': N,
@@ -81,7 +83,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
             func = this.__name__
             if func == "_START":
                 requests.post(
-                    "http://localhost:5000/api/start_tc/",
+                    root + "/api/start_tc/",
                     data={
                         'filename': filename,
                         'idx': idx,
@@ -103,7 +105,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
                 report=report,
                 python=app.config['VIRTUAL_ENV'],
             )
-    except JudgeFailed:
+    except JudgeFailed as Failed:
         expected = None
         with open(json) as fp:
             stdouts = [stdout for _, stdout in load(fp)]
@@ -116,17 +118,20 @@ def subtask_judge(self, previous_return=None, **kwargs):
             'output': ''.join(reported_stdout),
         }
         requests.post(
-            "http://localhost:5000/api/testcase/",
+            root + "/api/testcase/",
             data=data,
         )
+        raise Failed
     else:
         data = {
             'filename': filename,
             'idx': idx,
             'status': True,
+            'expected': 'nope',
+            'output': 'nope',
         }
         requests.post(
-            "http://localhost:5000/api/testcase/",
+            root + "/api/testcase/",
             data=data,
         )
     return data
@@ -183,7 +188,7 @@ def problem_submit(problemset, problem):
         )
     else:
         filename = submit()
-        tasks = task_judge(problemset, problem, filename).delay()
+        tasks = task_judge(problemset, problem, filename).apply_async(countdown=1.5)
         return render_template(
                 'result.html',
                 fileid=filename,
@@ -216,6 +221,7 @@ def resulttest():
             room = request.form['filename'],
             namespace='/test'
     )
+    return ''
 
 
 @app.route('/api/start_tc/', methods=['POST'])
@@ -225,10 +231,12 @@ def start_tc():
             room = request.form['filename'],
             namespace='/test'
     )
+    return ''
 
 
 @app.route('/api/testcase/', methods=['POST'])
 def resulttestcase():
+    print(request.form)
     output = request.form['output']
     emit('judging testcase', {
                 'idx': request.form['idx'],
@@ -237,7 +245,7 @@ def resulttestcase():
                 'output': output
                 },
             room=request.form['filename'], namespace='/test')
-    return 'tested'
+    return ''
 
 
 app.config['SECRET_KEY'] = 'secret!'
@@ -247,4 +255,6 @@ def join(message):
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, host="0.0.0.0")
+    import eventlet
+    eventlet.monkey_patch()
+    socketio.run(app, debug=True, host="0.0.0.0", port=app.config['PORT'])
