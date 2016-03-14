@@ -4,7 +4,6 @@ import uuid
 
 from celery import (
     Celery,
-    group,
     chain,
 )
 from flask import (
@@ -44,15 +43,20 @@ Markdown(app)
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 def task_judge(problemset, problem, filename):
     DB = problems.get_testcase_for_judging(problemset, problem)
-    subtasks = group(
-        [subtask_judge.s(filename, idx, tc['json']) for idx, tc in enumerate(DB['testcases'])]
+    subtasks = chain(
+        [subtask_judge.s(
+            filename=filename,
+            idx=idx,
+            json=tc['json']) for idx, tc in enumerate(DB['testcases'])]
     )
     return subtasks
 
 
 @celery.task(track_started=True, ignore_result=False)
-def subtask_judge(filename, idx, json):
-    print(idx)
+def subtask_judge(previous_return=None, **kwargs):
+    filename = kwargs['filename']
+    idx = kwargs['idx']
+    json = kwargs['json']
     with open('./UPLOADED/' + filename + '.log', 'wb') as log:
         Validate(
             this_program='./UPLOADED/%s' % (filename,),
@@ -141,10 +145,10 @@ def problem_submit(problemset, problem):
     else:
         filename = submit()
         tasks = task_judge(problemset, problem, filename).delay()
-        print(dir(tasks.children))
+        print(dir(tasks))
         return jsonify({
             'filename': filename,
-            'subtasks': [subtask.id for subtask in tasks.children],
+            #'subtasks': [subtask.id for subtask in tasks.children],
         })
 
 
