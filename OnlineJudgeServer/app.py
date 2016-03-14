@@ -8,6 +8,7 @@ from celery import (
 )
 from flask import (
     Flask,
+    session,
     url_for,
     render_template,
     redirect,
@@ -16,6 +17,7 @@ from flask import (
     current_app,
 )
 from flaskext.markdown import Markdown
+from flask_socketio import SocketIO, emit, join_room, rooms
 
 import problems
 from process_capsule import DEFAULT_PYTHON
@@ -33,6 +35,7 @@ app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 celery = Celery(app.name)
 celery.conf.update(app.config)
 
+socketio = SocketIO(app)
 Markdown(app)
 
 
@@ -151,5 +154,36 @@ def submit():
     return filename
 
 
+@app.route('/result/')
+def result():
+    return render_template(
+            'result.html',
+            fileid = "testid!!!",
+    ), 200
+
+
+
+def resulttest():
+    emit('start judge', {'data':'start_judge'}, room='testid!!!', namespace='/test')
+    return 'tested'
+
+
+app.config['SECRET_KEY'] = 'secret!'
+@socketio.on('join', namespace='/test')
+def join(message):
+    join_room(message['room'])
+
+
+@socketio.on('my event', namespace='/test')
+def my_event(message):
+    print(str(message))
+    start_judge()
+
+
+@socketio.on('start judge', namespace='/test')
+def start_judge(message):
+    emit('start judge', {'data':'start_judge'}, room='testid!!!', namespace='/test')
+
+
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    socketio.run(app, debug=True, host="0.0.0.0")
