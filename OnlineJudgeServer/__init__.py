@@ -30,6 +30,10 @@ from flask_socketio import (
 from werkzeug.contrib.fixers import ProxyFix
 
 from . import problems
+from .db import (
+    db,
+    monkeypatch_db_celery,
+)
 from .process_capsule import DEFAULT_PYTHON
 from .terminal_capsule import Validate
 
@@ -43,10 +47,13 @@ app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 app.config['PORT'] = int(os.environ.get('PORT', 8000))
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
 
+db.init_app(app)
+monkeypatch_db_celery(app, celery)
 socketio = SocketIO(app)
 Markdown(app)
 
