@@ -1,57 +1,119 @@
 {% extends "__bootstrap.html" %}
 {% block __bootstrap__body %}
-  <div class="alert alert-info" id="headsup" role="alert">
+<div class="alert alert-info" id="headsup" role="alert">
     <strong id="headsup-text">Judging others... Please wait</strong>
-  </div>
-  <div id="testcase"></div>
+</div>
+<div id="testcase"></div>
+<script id="if_start" type="text/html">
+<div class="card card-inverse card-warning text-xs-center">
+    <div class="card-block">
+        <blockquote class="card-blockquote">
+            Testcase #<idx /> <b>PENDING</b>
+        </blockquote>
+    </div>
+</div>
+</script>
+<script id="if_pass" type="text/html">
+    <div class="card card-inverse card-success text-xs-center">
+        <div class="card-block">
+            <blockquote class="card-blockquote">
+            Testcase #<idx /> <b>PASS</b>
+            </blockquote>
+        </div>
+    </div>
+</script>
+<script id="if_finished" type="text/html">
+    <div class="card card-inverse card-primary text-xs-center">
+        <div class="card-block">
+            <h4 class="card-title">
+                <b>Judging Done</b>
+            </h4>
+            <blockquote class="card-blockquote">
+                {{ problem }} from {{ problemset }}
+            </blockquote>
+        </div>
+    </div>
+</script>
+<script id="if_fail" type="text/html">
+    <div class="card card-inverse card-danger text-xs-center">
+        <div class="card-block">
+            <blockquote class="card-blockquote">
+                Testcase #<idx /> <b>FAIL</b>
+            </blockquote>
+        </div>
+    </div>
+</script>
+<script id="if_fail_detail" type="text/html">
+    <div class="card-group">
+        <div class="card">
+            <div class="card-header">Expected</div>
+                <div class="card-block">
+                    <blockquote class="card-blockquote">
+                        <p><expected /></p>
+                    </blockquote>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Output</div>
+                <div class="card-block">
+                    <blockquote class="card-blockquote">
+                        <p><output /></p>
+                    </blockquote>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card card-inverse card-warning text-xs-center">
+        <div class="card-block">
+            <h4 class="card-title">
+                <b>Judging Done</b>
+            </h4>
+            <blockquote class="card-blockquote">
+                {{ problem }} from {{ problemset }}
+            </blockquote>
+        </div>
+    </div>
+</script>
 {% endblock %}
 
 {% block __bootstrap__script %}
-  <script type="text/javascript">
-    var total_testcase = 0;
-    function start_judge(msg) {
-      total_testcase = msg.N;
-      $('#headsup').removeClass('alert-info')
-      $('#headsup').addClass('alert-success')
-      $('#headsup-text').text('Judging Start!')
-    };
+<script type="text/javascript">
+<!--
+function start_judge() {
+    $('#headsup').removeClass('alert-info');
+    $('#headsup').addClass('alert-success');
+    $('#headsup-text').text('Judging Start!');
+};
 
-    function start_testcase(msg) {
-        $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-warning text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PENDING</b></blockquote></div>'));
-    };
+function start_testcase(idx) {
+    message = $($('#if_start').html());
+    message.attr('id', idx);
+    $('idx', message).replaceWith(idx);
+    $('#testcase').append(message);
+};
 
-    function judging_testcase(msg) {
-      total_testcase--;
-      if(msg.pass === "True") {
-        $('#' + msg.idx).replaceWith('<div class="card card-inverse card-success text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>PASS</b></blockquote></div>');
+function judging_testcase(msg) {
+    if(msg.pass === "True") {
+        message = $($('#if_pass').html());
+        $('idx', message).replaceWith(msg.idx);
+        $('#' + msg.idx).replaceWith(message);
         if (total_testcase === 0) {
-          $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-primary text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
+            message = $($('#if_finished').html());
+            $('#testcase').append(message);
         }
-      }
-      else {
-        $('#' + msg.idx).replaceWith('<div class="card card-inverse card-danger text-xs-center"><div class="card-block"><blockquote class="card-blockquote">Testcase #' + msg.idx + ' <b>FAIL</b></blockquote></div>');
+    }
+    else {
+        message = $($('#if_fail').html());
+        $('idx', message).replaceWith(msg.idx);
+        $('#' + msg.idx).replaceWith(message);
 
-        $('#testcase').append($('\
-<div class="card-group">\
-<div class="card">\
-<div class="card-header">Expected</div>\
-<div class="card-block">\
-  <blockquote class="card-blockquote">\
-    <p>' + msg.expected + '</p>\
-  </blockquote>\
-</div>\
-</div>\
-<div class="card">\
-<div class="card-header">Output</div>\
-<div class="card-block">\
-  <blockquote class="card-blockquote">\
-    <p>' + msg.output + '</p>\
-  </blockquote>\
-</div>\
-</div>\
-</div>'));
-      $('#testcase').append($('<div id="' + msg.idx + '"class="card card-inverse card-warning text-xs-center"><div class="card-block"><h4 class="card-title"><b>Judging Done</b></h4><blockquote class="card-blockquote"> {{ problem }} from {{ problemset }} </blockquote></div>'));
-      }
-    };
-  </script>
+        detail = $($('#if_fail_detail').html());
+        $('expected', detail).replaceWith(msg.expected);
+        $('output', detail).replaceWith(msg.output);
+        $('#testcase').append(detail);
+    }
+};
+-->
+</script>
 {% endblock %}
