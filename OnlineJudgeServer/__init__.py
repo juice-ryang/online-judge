@@ -1,5 +1,4 @@
 import os
-import time
 import uuid
 from json import load
 
@@ -7,25 +6,27 @@ from celery import (
     Celery,
     chain,
 )
-from celery.task.http import URL
 from flask import (
     Flask,
-    session,
     url_for,
     render_template,
     redirect,
     request,
-    jsonify,
-    current_app,
     send_from_directory,
 )
 from flaskext.markdown import Markdown
+from sqlalchemy_utils import (
+    create_database,
+    database_exists,
+)
 from werkzeug.contrib.fixers import ProxyFix
 
 from . import problems
 from .db import (
     db,
     monkeypatch_db_celery,
+    JudgeStatus as Status,
+    JudgeFeedback as Feedback,
 )
 from .process_capsule import DEFAULT_PYTHON
 from .terminal_capsule import Validate
@@ -39,64 +40,64 @@ app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
 app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
-app.config['PORT'] = int(os.environ.get('PORT', 8000))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/feedback.db'
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
 
+db.app = app
 db.init_app(app)
+if not database_exists(app.config['SQLALCHEMY_DATABASE_URI']):
+    create_database(app.config['SQLALCHEMY_DATABASE_URI'])
+db.drop_all()
+db.create_all()
 monkeypatch_db_celery(app, celery)
+
 Markdown(app)
 
 
 def task_judge(problemset, problem, filename):
-    DB = problems.get_testcase_for_judging(problemset, problem)
+    PROBLEMS = problems.get_testcase_for_judging(problemset, problem)
     subtasks = chain(
         [subtask_judge.s(
             filename=filename,
-            N=DB['N'],
             idx=idx,
-            json=tc['json']) for idx, tc in enumerate(DB['testcases'])]
+            json=tc['json']) for idx, tc in enumerate(PROBLEMS['testcases'])]
     )
+    feedback = Feedback()
+    feedback.filename = filename
+    feedback.max_idx = PROBLEMS['N'] - 1
+    db.session.add(feedback)
+    db.session.commit()
     return subtasks
 
 
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 @celery.task(bind=True, track_started=True, ignore_result=False)
 def subtask_judge(self, previous_return=None, **kwargs):
-    import requests
     filename = kwargs['filename']
     idx = kwargs['idx']
     json = kwargs['json']
-    N = kwargs['N']
-    root = "http://localhost:%s" % (app.config['PORT'],)
 
-    if not previous_return:
-        requests.post(
-            "%s/api/start/" % (root,),
-            data={
-                'filename': filename,
-                'N': N,
-            }
-        )
+    if not previous_return:  # first run,
+        found = Feedback.query.get(filename)
+        found.status = Status['STARTED']
+        db.session.commit()
 
     class JudgeFailed(Exception):
         pass
 
     reported_stdout = []
+
     def report(this):
         def _(*args, **kwargs):
             out = this(*args, **kwargs)
             func = this.__name__
             if func == "_START":
-                requests.post(
-                    "%s/api/start_tc/" % (root,),
-                    data={
-                        'filename': filename,
-                        'idx': idx,
-                    }
-                )
+                found = Feedback.query.get(filename)
+                found.cur_idx = idx
+                db.session.commit()
             elif func == "_FAIL":
                 raise JudgeFailed()
             elif func == "_GOT_STDOUT":
@@ -118,31 +119,18 @@ def subtask_judge(self, previous_return=None, **kwargs):
         with open(json) as fp:
             stdouts = [stdout for _, stdout in load(fp)]
             expected = ''.join(stdouts)
-        data = {
-            'filename': filename,
-            'idx': idx,
-            'status': False,
-            'expected': expected,
-            'output': ''.join(reported_stdout),
-        }
-        requests.post(
-            "%s/api/testcase/" % (root,),
-            data=data,
-        )
+        found = Feedback.query.get(filename)
+        found.status = Status['FAILED']
+        found.expected_output = expected
+        found.actual_output = ''.join(reported_stdout)
+        db.session.commit()
         raise Failed
     else:
-        data = {
-            'filename': filename,
-            'idx': idx,
-            'status': True,
-            'expected': 'nope',
-            'output': 'nope',
-        }
-        requests.post(
-            "%s/api/testcase/" % (root,),
-            data=data,
-        )
-    return data
+        found = Feedback.query.get(filename)
+        if found.cur_idx == found.max_idx:
+            found.status = Status['FINISHED']
+            db.session.commit()
+    return str(found)
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
 
 
@@ -171,6 +159,7 @@ def problemset(problemset):
 @app.route('/<problemset>/<problem>/', methods=['GET', 'POST'])
 def problem(problemset, problem):
     if request.method == 'GET':
+        # TODO: Oh God, ... Please refactor these.
         return render_template(
                 'problem.html',
                 problemset=problemset,
@@ -186,6 +175,7 @@ def problem(problemset, problem):
         ), 200
     else:
         return redirect(url_for('submit'), code=307)
+
 
 @app.route('/<problemset>/<problem>/<filename>', methods=['GET'])
 def additional_file_serve(problemset, problem, filename):
@@ -205,7 +195,7 @@ def additional_file_serve(problemset, problem, filename):
     return send_from_directory(path, filename)
 
 
-@app.route('/<problemset>/<problem>/submit', methods=['GET', 'POST'])
+@app.route('/<problemset>/<problem>/submit/', methods=['GET', 'POST'])
 def problem_submit(problemset, problem):
     if request.method == 'GET':
         return redirect(
@@ -213,13 +203,24 @@ def problem_submit(problemset, problem):
         )
     else:
         filename = submit()
-        tasks = task_judge(problemset, problem, filename).apply_async(countdown=1.5)
+        task_judge(problemset, problem, filename).apply_async(countdown=1.5)
         return render_template(
                 'result.html',
                 fileid=filename,
                 problemset=problemset,
                 problem=problem,
         )
+
+
+@app.route('/api/status/<filename>', methods=['GET'])
+def status(filename):
+    found = Feedback.query.get(filename)
+    if not found:
+        return 'Not Found', 404
+    last_updated = request.args.get('last_updated')
+    if last_updated == str(found.updated):
+        return 'not updated yet', 304
+    return str(found)
 
 
 def submit():
@@ -230,22 +231,3 @@ def submit():
     f.save(os.path.join('./UPLOADED/', filename))
 
     return filename
-
-
-@app.route('/api/testcase/', methods=['POST'])
-def resulttestcase():
-    # TODO : PULL THIS OUT
-    expected = list(request.form['expected'])
-    while expected.count('\n'):
-        expected[expected.index('\n')] = '<br>'
-    while expected.count('\r'):
-        expected.remove('\r')
-    expected = ''.join(expected)
-
-    output = list(request.form['output'])
-    while output.count('\n'):
-        output[output.index('\n')] = '<br>'
-    while output.count('\r'):
-        output.remove('\r')
-    output = ''.join(output)
-    return ''

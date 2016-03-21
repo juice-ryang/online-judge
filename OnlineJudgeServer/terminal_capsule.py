@@ -311,4 +311,5 @@ def Validate(this_program, from_json,
                             if is_failed:
                                 break
             except Capsule.DEAD as dying_message:
+                buf.stdout += str(dying_message)
                 _FAIL()

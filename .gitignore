@@ -1,5 +1,6 @@
 supervisor.onlinejudge.ini
 UPLOADED/
+feedback.db
 
 # Created by https://www.gitignore.io/api/osx,python
 

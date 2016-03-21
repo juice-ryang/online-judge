@@ -1,4 +1,6 @@
+from datetime import datetime
 from enum import Enum
+from json import dumps
 
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy_utils import ChoiceType as EnumType
@@ -7,29 +9,70 @@ db = SQLAlchemy()
 
 
 class JudgeStatus(Enum):
-    """."""
     PENDING = 0
     STARTED = 1
-    SUCCESS = 2
-    FAILED = 3
+    FAILED = 2
+    FINISHED = 3
 
 
 class JudgeFeedback(db.Model):
-    """."""
     __tablename__ = "feedback"
 
-    filename = db.Column(db.String(50), primary_key=True)
-    idx = db.Column(db.Integer, primary_key=True)
-    status = db.Column(EnumType(JudgeStatus), default=JudgeStatus.PENDING)
+    filename = db.Column(db.String(36), primary_key=True)  # TODO: UUID
+    cur_idx = db.Column(db.Integer, default=0)
+    max_idx = db.Column(db.Integer, nullable=False)
+    status = db.Column(
+            EnumType(
+                JudgeStatus,
+                impl=db.Integer(),
+            ),
+            default=JudgeStatus['PENDING'],
+    )
     expected_output = db.Column(db.String(1024), nullable=True)
     actual_output = db.Column(db.String(1024), nullable=True)
+    created = db.Column(db.DateTime, default=datetime.now)
+    updated = db.Column(db.DateTime, nullable=False)
+
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+        super().__setattr__('updated', datetime.now())
+
+    def __str__(self):
+        output = {}
+        for key in self.__dict__:
+            if key[0] == '_':
+                pass
+            elif key in ('updated', 'created', 'status'):
+                output[key] = str(getattr(self, key))
+            elif key in ('expected_output', 'actual_output'):
+                value = getattr(self, key)
+                if value:
+                    output[key] = JudgeFeedback._Brrrrify(value)
+            else:
+                value = getattr(self, key)
+                if value:
+                    output[key] = value
+        return dumps(output, sort_keys=True, indent=2)
+
+    @staticmethod
+    def _Brrrrify(inputs, before='\n', after='<br>', ignores=('\r',)):
+        """please god save us."""
+        inputs = list(inputs)
+        while inputs.count(before):
+            inputs[inputs.index(before)] = after
+        for ign in ignores:
+            while inputs.count(ign):
+                inputs.remove(ign)
+        return ''.join(inputs)
 
 
 def monkeypatch_db_celery(app, celery):
     """Let Celery can change the content of DB with App context."""
     TaskBase = celery.Task
+
     class ContextTask(TaskBase):
         abstract = True
+
         def __call__(self, *args, **kwargs):
             with app.app_context():
                 return TaskBase.__call__(self, *args, **kwargs)
