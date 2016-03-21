@@ -64,6 +64,7 @@
             </div>
         </div>
     </div>
+    <!-- TODO PULL THIS OUT! -->
     <div class="card card-inverse card-warning text-xs-center">
         <div class="card-block">
             <h4 class="card-title">
@@ -87,33 +88,103 @@ function start_judge() {
 };
 
 function start_testcase(idx) {
-    message = $($('#if_start').html());
-    message.attr('id', idx);
+    if($('#' + idx).length > 0){
+        console.log('already started!');
+    }else{
+        message = $($('#if_start').html());
+        message.attr('id', idx);
+        $('idx', message).replaceWith(idx);
+        $('#testcase').append(message);
+    }
+};
+
+function pass_testcase(idx) {
+    message = $($('#if_pass').html());
     $('idx', message).replaceWith(idx);
+    $('#' + idx).replaceWith(message);
+};
+
+function fail_testcase(idx, expected, output) {
+    // TODO : Merge this!
+    message = $($('#if_fail').html());
+    $('idx', message).replaceWith(idx);
+    $('#' + idx).replaceWith(message);
+
+    detail = $($('#if_fail_detail').html());
+    $('expected', detail).replaceWith(expected);
+    $('output', detail).replaceWith(output);
+    $('#testcase').append(detail);
+};
+
+function finished(){
+    message = $($('#if_finished').html());
     $('#testcase').append(message);
 };
 
-function judging_testcase(msg) {
-    if(msg.pass === "True") {
-        message = $($('#if_pass').html());
-        $('idx', message).replaceWith(msg.idx);
-        $('#' + msg.idx).replaceWith(message);
-        if (total_testcase === 0) {
-            message = $($('#if_finished').html());
-            $('#testcase').append(message);
-        }
+var __now_idx = -1;
+function conditions(msg){
+    console.log(msg);
+    if(msg.status === 'JudgeStatus.PENDING'){
+        return true;
     }
-    else {
-        message = $($('#if_fail').html());
-        $('idx', message).replaceWith(msg.idx);
-        $('#' + msg.idx).replaceWith(message);
 
-        detail = $($('#if_fail_detail').html());
-        $('expected', detail).replaceWith(msg.expected);
-        $('output', detail).replaceWith(msg.output);
-        $('#testcase').append(detail);
+    if(__now_idx === -1){
+        // XXX: got response from Judging server!
+        start_judge();
+        __now_idx = 0;
     }
+
+    for (i = __now_idx; i < msg.cur_idx; i++){
+        // XXX: fill the gap!
+        start_testcase(i);
+        pass_testcase(i);
+    }
+    __now_idx = msg.cur_idx;
+
+    start_testcase(__now_idx);
+
+    if(msg.status === 'JudgeStatus.STARTED'){
+        return true;
+    }
+
+    if(msg.status === 'JudgeStatus.FAILED'){
+        fail_testcase(__now_idx, msg.expected_output, msg.actual_output);
+        return false;
+    }
+
+    if(msg.status === 'JudgeStatus.FINISHED'){
+        pass_testcase(__now_idx);
+        finished();
+        return false;
+    }
+}
+
+var __updated;
+function loop_in_my_heart(){
+    $.ajax({
+        url: '/api/status/{{ filename }}',
+        data: {last_updated: __updated},
+        dataType: 'json',
+        statusCode: {
+            200: function(msg) {
+                ret = conditions(msg);
+                if(ret){
+                    setTimeout("loop_in_my_heart()", 700);
+                }
+                __updated = msg.updated;
+            },
+            304: function() {
+                console.log('not updated yet!');
+                setTimeout("loop_in_my_heart()", 700);
+            },
+            404: function() {
+                alert('Something goes wrong.');
+            },
+            // TODO: What about others?
+        },
+    });
 };
+loop_in_my_heart();
 -->
 </script>
 {% endblock %}

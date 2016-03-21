@@ -46,11 +46,11 @@ class JudgeFeedback(db.Model):
                 output[key] = str(getattr(self, key))
             elif key in ('expected_output', 'actual_output'):
                 value = getattr(self, key)
-                if value:
+                if value is not None:
                     output[key] = JudgeFeedback._Brrrrify(value)
             else:
                 value = getattr(self, key)
-                if value:
+                if value is not None:
                     output[key] = value
         return dumps(output, sort_keys=True, indent=2)
 

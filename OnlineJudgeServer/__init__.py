@@ -83,6 +83,7 @@ def subtask_judge(self, previous_return=None, **kwargs):
     if not previous_return:  # first run,
         found = Feedback.query.get(filename)
         found.status = Status['STARTED']
+        found.cur_idx = 0
         db.session.commit()
 
     class JudgeFailed(Exception):
@@ -206,7 +207,7 @@ def problem_submit(problemset, problem):
         task_judge(problemset, problem, filename).apply_async(countdown=1.5)
         return render_template(
                 'result.html',
-                fileid=filename,
+                filename=filename,
                 problemset=problemset,
                 problem=problem,
         )
