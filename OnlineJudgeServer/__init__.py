@@ -17,6 +17,7 @@ from flask import (
     request,
     jsonify,
     current_app,
+    send_from_directory,
 )
 from flaskext.markdown import Markdown
 from werkzeug.contrib.fixers import ProxyFix
@@ -185,6 +186,23 @@ def problem(problemset, problem):
         ), 200
     else:
         return redirect(url_for('submit'), code=307)
+
+@app.route('/<problemset>/<problem>/<filename>', methods=['GET'])
+def additional_file_serve(problemset, problem, filename):
+    # TODO: SECURITY WARNING!!!!!
+    is_accepted = False
+    for ext in [
+        '.png',
+    ]:
+        if filename.endswith(ext):
+            is_accepted = True
+            break
+    if not is_accepted:
+        return redirect(
+                url_for('problem', problemset=problemset, problem=problem)
+        )
+    path = os.path.join("problems/", problemset, problem)
+    return send_from_directory(path, filename)
 
 
 @app.route('/<problemset>/<problem>/submit', methods=['GET', 'POST'])
