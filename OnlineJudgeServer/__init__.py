@@ -19,14 +19,6 @@ from flask import (
     current_app,
 )
 from flaskext.markdown import Markdown
-from flask_socketio import (
-        SocketIO,
-        emit,
-        join_room,
-        rooms,
-        disconnect,
-        leave_room,
-)
 from werkzeug.contrib.fixers import ProxyFix
 
 from . import problems
@@ -54,7 +46,6 @@ celery.conf.update(app.config)
 
 db.init_app(app)
 monkeypatch_db_celery(app, celery)
-socketio = SocketIO(app)
 Markdown(app)
 
 
@@ -223,29 +214,9 @@ def submit():
     return filename
 
 
-@app.route('/api/start/', methods=["POST"])
-def resulttest():
-    emit('start judge',
-            {'N': request.form['N']},
-            room = request.form['filename'],
-            namespace='/test'
-    )
-    return ''
-
-
-@app.route('/api/start_tc/', methods=['POST'])
-def start_tc():
-    emit('start testcase',
-            {'idx': request.form['idx']},
-            room = request.form['filename'],
-            namespace='/test'
-    )
-    return ''
-
-
 @app.route('/api/testcase/', methods=['POST'])
 def resulttestcase():
-    
+    # TODO : PULL THIS OUT
     expected = list(request.form['expected'])
     while expected.count('\n'):
         expected[expected.index('\n')] = '<br>'
@@ -259,24 +230,4 @@ def resulttestcase():
     while output.count('\r'):
         output.remove('\r')
     output = ''.join(output)
-    
-    emit('judging testcase', {
-                'idx': request.form['idx'],
-                'pass': request.form['status'], 
-                'expected': expected,
-                'output': output
-                },
-            room=request.form['filename'], namespace='/test')
     return ''
-
-
-app.config['SECRET_KEY'] = 'secret!'
-@socketio.on('join', namespace='/test')
-def join(message):
-    join_room(message['room'])
-
-
-@socketio.on('leave', namespace='/test')
-def leave(message):
-    leave_room(message['room'])
-    disconnect()

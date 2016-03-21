@@ -5,7 +5,6 @@ flask
 Flask-Markdown
 celery
 flower
-flask-socketio
 requests
 gunicorn
 eventlet
