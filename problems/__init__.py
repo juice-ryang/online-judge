@@ -9,7 +9,7 @@ def __search__():
     for s in glob('problems/*'):
         s = s.split('/')[-1]
         # QUICK FIX
-        if s == '__init__.py' or s == '__pycache__':
+        if s == '__init__.py' or s == '__pycache__' or s == 'real':
             continue
         psetlist.append(s) 
         pdict[s] = list()
