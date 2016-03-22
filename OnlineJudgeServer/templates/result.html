@@ -44,26 +44,34 @@
     </div>
 </script>
 <script id="if_fail_detail" type="text/html">
-    <div class="card-group">
-        <div class="card">
-            <div class="card-header">Expected</div>
-                <div class="card-block">
-                    <blockquote class="card-blockquote">
-                        <p><pre><expected /></pre></p>
-                    </blockquote>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header">Output</div>
-                <div class="card-block">
-                    <blockquote class="card-blockquote">
-                        <p><pre><output /></pre></p>
-                    </blockquote>
-                </div>
-            </div>
-        </div>
-    </div>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Expected</th>
+                <th>Output</th>
+                <th>Difference</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <p>
+                        <pre class="original"><expected /></pre>
+                    </p>
+                </td>
+                <td>
+                    <p>
+                        <pre class="changed"><output /></pre>
+                    </p>
+                </td>
+                <td>
+                    <p id="difference">
+                        <pre class="diff"><difference /></pre>
+                    </p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
     <!-- TODO PULL THIS OUT! -->
     <div class="card card-inverse card-warning text-xs-center">
         <div class="card-block">
@@ -79,6 +87,7 @@
 {% endblock %}
 
 {% block __bootstrap__script %}
+<script src="/static/PrettyTextDiff/jquery.pretty-text-diff.min.js"></script>
 <script type="text/javascript">
 <!--
 function start_judge() {
@@ -113,7 +122,12 @@ function fail_testcase(idx, expected, output) {
     detail = $($('#if_fail_detail').html());
     $('expected', detail).replaceWith(expected);
     $('output', detail).replaceWith(output);
-    $('#testcase').append(detail);
+    $('#difference pre').prettyTextDiff({
+        cleanup: true,
+        originalContent: expected,
+        changedContent: output,
+        diffContainer: ".diff"
+    });
 };
 
 function finished(){
