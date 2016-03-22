@@ -315,4 +315,5 @@ def Validate(this_program, from_json,
                     buf.stdout += str(dying_message)
                 else:
                     buf.stdout = str(dying_message)
+                _GOT_STDOUT()
                 _FAIL()

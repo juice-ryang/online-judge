@@ -6,6 +6,7 @@ from celery import (
     Celery,
     chain,
 )
+from chardet import detect as Chardet
 from flask import (
     Flask,
     url_for,
@@ -229,6 +230,12 @@ def submit():
     filename = str(uuid.uuid4())
     if not os.path.exists('./UPLOADED/'):
         os.makedirs('./UPLOADED/')
-    f.save(os.path.join('./UPLOADED/', filename))
-
+    filepath = os.path.join('./UPLOADED/', filename)
+    f.save(filepath + '.origin')
+    data = None
+    with open(filepath + '.origin', 'rb') as f_origin:
+        data = f_origin.read()
+    det = Chardet(data)
+    with open(filepath, 'w') as f_real:
+        f_real.write(data.decode(det['encoding']))
     return filename
