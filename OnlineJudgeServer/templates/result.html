@@ -123,12 +123,13 @@ function fail_testcase(idx, expected, output) {
     detail = $($('#if_fail_detail').html());
     $('expected', detail).replaceWith(expected);
     $('output', detail).replaceWith(output);
-    $('#difference pre').prettyTextDiff({
+    $(detail).prettyTextDiff({
         cleanup: true,
         originalContent: expected,
         changedContent: output,
         diffContainer: ".diff"
     });
+    $('#testcase').append(detail);
 };
 
 function finished(){
