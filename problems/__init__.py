@@ -32,8 +32,8 @@ def get_problem_description(problemset, problem):
     if problemset in psetlist:
         if problem in pdict[problemset]:
             f = open('problems/'+problemset+'/'+problem+'/description.md')
-            return "".join(f.readlines())
-    return None
+            return ''.join(f.readlines())
+    return '##No description.'
 
 
 def get_testcase_for_judging(problemset, problem):
