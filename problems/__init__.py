@@ -6,14 +6,17 @@ psetlist = list()
 
 def __search__():
     from glob import glob
+    from os.path import isdir, isfile
+
     for s in glob('problems/*'):
+        if not isdir(s) or isfile(s+'/.jrojignore'):
+            continue
         s = s.split('/')[-1]
-        # QUICK FIX
-        if s == '__init__.py' or s == '__pycache__' or s == 'real':
+        if s == '__pycache__':
             continue
         psetlist.append(s) 
         pdict[s] = list()
-        for p in glob('problems/'+s+'/*'):
+        for p in glob('problems/' + s + '/*'):
             pdict[s].append(p.split('/')[-1])
         pdict[s].sort()
     psetlist.sort()
