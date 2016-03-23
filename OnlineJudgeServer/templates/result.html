@@ -34,16 +34,18 @@ del {
     </div>
 </script>
 <script id="if_finished" type="text/html">
-    <div class="card card-inverse card-primary text-xs-center">
-        <div class="card-block">
-            <h4 class="card-title">
-                <b>Judging Done</b>
-            </h4>
-            <blockquote class="card-blockquote">
-                {{ problem }} from {{ problemset }}
-            </blockquote>
+    <a href="/{{ problemset }}">
+        <div class="card card-inverse card-primary text-xs-center">
+            <div class="card-block">
+                <h4 class="card-title">
+                    <b>Judging Done</b>
+                </h4>
+                <blockquote class="card-blockquote">
+                    {{ problem }} from {{ problemset }}
+                </blockquote>
+            </div>
         </div>
-    </div>
+    </a>
 </script>
 <script id="if_fail" type="text/html">
     <div class="card card-inverse card-danger text-xs-center">
@@ -84,16 +86,18 @@ del {
         </tbody>
     </table>
     <!-- TODO PULL THIS OUT! -->
-    <div class="card card-inverse card-warning text-xs-center">
-        <div class="card-block">
-            <h4 class="card-title">
-                <b>Judging Done</b>
-            </h4>
-            <blockquote class="card-blockquote">
-                {{ problem }} from {{ problemset }}
-            </blockquote>
+    <a href="/{{ problemset }}/{{ problem }}">
+        <div class="card card-inverse card-warning text-xs-center">
+            <div class="card-block">
+                <h4 class="card-title">
+                    <b>Judging Done</b>
+                </h4>
+                <blockquote class="card-blockquote">
+                    {{ problem }} from {{ problemset }}
+                </blockquote>
+            </div>
         </div>
-    </div>
+    </a>
 </script>
 {% endblock %}
 
