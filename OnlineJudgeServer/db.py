@@ -28,6 +28,7 @@ class JudgeFeedback(db.Model):
             ),
             default=JudgeStatus['PENDING'],
     )
+    cur_json_idx = db.Column(db.Integer, default=0)
     expected_output = db.Column(db.String(1024), nullable=True)
     actual_output = db.Column(db.String(1024), nullable=True)
     created = db.Column(db.DateTime, default=datetime.now)

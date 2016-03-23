@@ -100,6 +100,10 @@ def subtask_judge(self, previous_return=None, **kwargs):
                 found = Feedback.query.get(filename)
                 found.cur_idx = idx
                 db.session.commit()
+            elif func == "_PASS":
+                found = Feedback.query.get(filename)
+                found.cur_json_idx += 1
+                db.session.commit()
             elif func == "_FAIL":
                 raise JudgeFailed()
             elif func == "_GOT_STDOUT":
@@ -117,12 +121,12 @@ def subtask_judge(self, previous_return=None, **kwargs):
                 python=app.config['VIRTUAL_ENV'],
             )
     except JudgeFailed as Failed:
-        expected = None
-        with open(json) as fp:
-            stdouts = [stdout for _, stdout in load(fp)]
-            expected = ''.join(stdouts)
         found = Feedback.query.get(filename)
         found.status = Status['FAILED']
+        expected = ''
+        with open(json) as fp:
+            stdouts = [stdout for _, stdout in load(fp)]
+            expected = ''.join(stdouts[:found.cur_json_idx + 1])
         found.expected_output = expected
         found.actual_output = ''.join(reported_stdout)
         db.session.commit()
