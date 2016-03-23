@@ -1,4 +1,16 @@
 {% extends "__bootstrap.html" %}
+{% block __bootstrap__head %}
+<style>
+ins {
+    background-color: #c6ffc6;
+    text-decoration: none;
+}
+
+del {
+    background-color: #ffc6c6;
+}
+</style>
+{% endblock %}
 {% block __bootstrap__body %}
 <div class="alert alert-info" id="headsup" role="alert">
     <strong id="headsup-text">Judging others... Please wait</strong>
