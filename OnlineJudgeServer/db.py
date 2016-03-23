@@ -47,7 +47,7 @@ class JudgeFeedback(db.Model):
             elif key in ('expected_output', 'actual_output'):
                 value = getattr(self, key)
                 if value is not None:
-                    output[key] = JudgeFeedback._Brrrrify(value)
+                    output[key] = value  # XXX: JudgeFeedback._Brrrrify(value)
             else:
                 value = getattr(self, key)
                 if value is not None:
