@@ -123,6 +123,7 @@ function pass_testcase(idx) {
     message = $($('#if_pass').html());
     $('idx', message).replaceWith(idx);
     $('#' + idx).replaceWith(message);
+    scroll_to_bottom();
 };
 
 function fail_testcase(idx, expected, output) {
@@ -141,12 +142,23 @@ function fail_testcase(idx, expected, output) {
         diffContainer: ".diff"
     });
     $('#testcase').append(detail);
+    scroll_to_bottom();
 };
 
 function finished(){
     message = $($('#if_finished').html());
     $('#testcase').append(message);
+    scroll_to_bottom();
 };
+
+function scroll_to_bottom(){
+    $("body").animate(
+        {
+            scrollTop: $(document).height()-$(window).height()
+        },
+        "fast"
+    );
+}
 
 var __now_idx = -1;
 function conditions(msg){
