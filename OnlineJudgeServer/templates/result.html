@@ -34,16 +34,18 @@ del {
     </div>
 </script>
 <script id="if_finished" type="text/html">
-    <div class="card card-inverse card-primary text-xs-center">
-        <div class="card-block">
-            <h4 class="card-title">
-                <b>Judging Done</b>
-            </h4>
-            <blockquote class="card-blockquote">
-                {{ problem }} from {{ problemset }}
-            </blockquote>
+    <a href="/{{ problemset }}">
+        <div class="card card-inverse card-primary text-xs-center">
+            <div class="card-block">
+                <h4 class="card-title">
+                    <b>Judging Done</b>
+                </h4>
+                <blockquote class="card-blockquote">
+                    {{ problem }} from {{ problemset }}
+                </blockquote>
+            </div>
         </div>
-    </div>
+    </a>
 </script>
 <script id="if_fail" type="text/html">
     <div class="card card-inverse card-danger text-xs-center">
@@ -84,16 +86,18 @@ del {
         </tbody>
     </table>
     <!-- TODO PULL THIS OUT! -->
-    <div class="card card-inverse card-warning text-xs-center">
-        <div class="card-block">
-            <h4 class="card-title">
-                <b>Judging Done</b>
-            </h4>
-            <blockquote class="card-blockquote">
-                {{ problem }} from {{ problemset }}
-            </blockquote>
+    <a href="/{{ problemset }}/{{ problem }}">
+        <div class="card card-inverse card-warning text-xs-center">
+            <div class="card-block">
+                <h4 class="card-title">
+                    <b>Judging Done</b>
+                </h4>
+                <blockquote class="card-blockquote">
+                    {{ problem }} from {{ problemset }}
+                </blockquote>
+            </div>
         </div>
-    </div>
+    </a>
 </script>
 {% endblock %}
 
@@ -123,6 +127,7 @@ function pass_testcase(idx) {
     message = $($('#if_pass').html());
     $('idx', message).replaceWith(idx);
     $('#' + idx).replaceWith(message);
+    scroll_to_bottom();
 };
 
 function fail_testcase(idx, expected, output) {
@@ -141,12 +146,23 @@ function fail_testcase(idx, expected, output) {
         diffContainer: ".diff"
     });
     $('#testcase').append(detail);
+    scroll_to_bottom();
 };
 
 function finished(){
     message = $($('#if_finished').html());
     $('#testcase').append(message);
+    scroll_to_bottom();
 };
+
+function scroll_to_bottom(){
+    $("body").animate(
+        {
+            scrollTop: $(document).height()-$(window).height()
+        },
+        "fast"
+    );
+}
 
 var __now_idx = -1;
 function conditions(msg){
