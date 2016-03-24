@@ -11,8 +11,10 @@ del {
 </style>
 {% endblock %}
 {% block __bootstrap__body %}
-<div class="alert alert-info" id="headsup" role="alert">
+<div class="alert alert-info alert-dismissible" id="headsup" role="alert">
     <strong id="headsup-text">Judging others... Please wait</strong>
+    <strong class="server-updated-time close" style="padding-left: 6px; font-size: 1rem;"></strong>
+    <strong class="diff-time close" style="font-size: 1rem;"></strong>
 </div>
 <div id="testcase"></div>
 <script id="if_start" type="text/html">
@@ -106,6 +108,10 @@ del {
 <script src="/static/PrettyTextDiff/js/jquery.pretty-text-diff.min.js"></script>
 <script type="text/javascript">
 <!--
+window.onerror = function (){
+    alert("앗! 채점 시스템에 무언가 문제가 생긴 것 같습니다!");
+}
+
 function start_judge() {
     $('#headsup').removeClass('alert-info');
     $('#headsup').addClass('alert-success');
@@ -202,6 +208,10 @@ function conditions(msg){
     }
 }
 
+function time_diff(from_server){
+    return (Date.now() - Date.parse(from_server)) / 1000
+}
+
 var __updated;
 function loop_in_my_heart(){
     $.ajax({
@@ -215,10 +225,13 @@ function loop_in_my_heart(){
                     setTimeout("loop_in_my_heart()", 700);
                 }
                 __updated = msg.updated;
+                $('.diff-time').text(__updated);
+                $('.server-updated-time').text("");
             },
             304: function() {
                 console.log('not updated yet!');
                 setTimeout("loop_in_my_heart()", 700);
+                $('.server-updated-time').text("(최신)");
             },
             404: function() {
                 alert('Something goes wrong.');
