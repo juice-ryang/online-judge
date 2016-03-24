@@ -136,8 +136,8 @@ function fail_testcase(idx, expected, output) {
     $('output', detail).replaceWith(output);
     $(detail).prettyTextDiff({
         cleanup: true,
-        originalContent: expected,
-        changedContent: output,
+        originalContent: ' ' + expected.replace(/\n/g, '\n '),
+        changedContent: ' ' + output.replace(/\n/g, '\n '),
         diffContainer: ".diff"
     });
     $('#testcase').append(detail);
