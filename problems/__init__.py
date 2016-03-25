@@ -34,8 +34,8 @@ def get_all_sets():
 def get_problem_description(problemset, problem):
     if problemset in psetlist:
         if problem in pdict[problemset]:
-            f = open('problems/'+problemset+'/'+problem+'/description.md')
-            return ''.join(f.readlines())
+            f = open('problems/'+problemset+'/'+problem+'/description.md', 'rb')
+            return ''.join(f.read().decode('utf-8'))
     return '##No description.'
 
 

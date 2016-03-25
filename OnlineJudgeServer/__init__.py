@@ -33,6 +33,7 @@ from .process_capsule import DEFAULT_PYTHON
 from .terminal_capsule import Validate
 
 app = Flask(__name__)
+app.debug = True
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.config['CELERY_ACCEPT_CONTENT'] = ['json']
 app.config['CELERY_TASK_SERIALIZER'] = 'json'
