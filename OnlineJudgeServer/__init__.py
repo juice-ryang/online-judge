@@ -241,6 +241,6 @@ def submit():
     with open(filepath + '.origin', 'rb') as f_origin:
         data = f_origin.read()
     det = Chardet(data)
-    with open(filepath, 'w') as f_real:
-        f_real.write(data.decode(det['encoding']))
+    with open(filepath, 'wb') as f_real:
+        f_real.write(data.decode(det['encoding']).encode('utf-8'))
     return filename
