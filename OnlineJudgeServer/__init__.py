@@ -194,8 +194,7 @@ def problem(problem):
                 ),
                 submit_url=url_for(
                     'problem_submit',
-                    problemset=problemset,
-                    problem=problem,
+                    problem='/'.join((problemset, problem)),
                 ),
         ), 200
     else:
@@ -215,7 +214,7 @@ def additional_file_serve(problem, filename):
             break
     if not is_accepted:
         return redirect(
-                url_for('problem', problemset=problemset, problem=problem)
+                url_for('problem', problem='/'.join((problemset, problem)))
         )
     path = os.path.join("problems/", problemset, problem)
     return send_from_directory(path, filename)
@@ -226,7 +225,7 @@ def problem_submit(problem):
     problemset, problem = problem.split('/')
     if request.method == 'GET':
         return redirect(
-                url_for('problem', problemset=problemset, problem=problem)
+                url_for('problem', problem='/'.join((problemset, problem)))
         )
     else:
         filename = submit()
