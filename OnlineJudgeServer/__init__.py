@@ -21,6 +21,7 @@ from sqlalchemy_utils import (
     database_exists,
 )
 from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.routing import AnyConverter
 
 from . import problems
 from .db import (
@@ -154,7 +155,23 @@ def favicon():
     return redirect('/static/favicon.ico')
 
 
-@app.route('/<problemset>/')
+def problemset__url_rules(_):
+    return AnyConverter(_, *problems.get_all_sets())
+
+
+def problem__url_rules(_):
+    rules = []
+    for problemset, problem_names in problems.pdict.items():
+        for problem in problem_names:
+            rules.append('/'.join((problemset, problem)))
+    return AnyConverter(_, *rules)
+
+
+app.url_map.converters['problemset'] = lambda _: problemset__url_rules(_)
+app.url_map.converters['problem'] = lambda _: problem__url_rules(_)
+
+
+@app.route('/<problemset:problemset>/')
 def problemset(problemset):
     return render_template(
             'problemset.html',
@@ -163,8 +180,9 @@ def problemset(problemset):
     ), 200
 
 
-@app.route('/<problemset>/<problem>/', methods=['GET', 'POST'])
-def problem(problemset, problem):
+@app.route('/<problem:problem>/', methods=['GET', 'POST'])
+def problem(problem):
+    problemset, problem = problem.split('/')
     if request.method == 'GET':
         # TODO: Oh God, ... Please refactor these.
         return render_template(
@@ -184,8 +202,9 @@ def problem(problemset, problem):
         return redirect(url_for('submit'), code=307)
 
 
-@app.route('/<problemset>/<problem>/<filename>', methods=['GET'])
-def additional_file_serve(problemset, problem, filename):
+@app.route('/<problem:problem>/<filename>', methods=['GET'])
+def additional_file_serve(problem, filename):
+    problemset, problem = problem.split('/')
     # TODO: SECURITY WARNING!!!!!
     is_accepted = False
     for ext in [
@@ -202,8 +221,9 @@ def additional_file_serve(problemset, problem, filename):
     return send_from_directory(path, filename)
 
 
-@app.route('/<problemset>/<problem>/submit/', methods=['GET', 'POST'])
-def problem_submit(problemset, problem):
+@app.route('/<problem:problem>/submit/', methods=['GET', 'POST'])
+def problem_submit(problem):
+    problemset, problem = problem.split('/')
     if request.method == 'GET':
         return redirect(
                 url_for('problem', problemset=problemset, problem=problem)
