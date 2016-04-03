@@ -25,6 +25,7 @@ from werkzeug.routing import AnyConverter
 
 from . import problems
 from .db import (
+    admin,
     db,
     monkeypatch_db_celery,
     JudgeStatus as Status,
@@ -40,27 +41,32 @@ app.config['CELERY_ACCEPT_CONTENT'] = ['json']
 app.config['CELERY_TASK_SERIALIZER'] = 'json'
 app.config['CELERY_RESULT_SERIALIZER'] = 'json'
 app.config['CELERY_TIMEZONE'] = 'Asia/Seoul'
-app.config['CELERY_BROKER_URL'] = 'amqp://guest@localhost//'
-app.config['CELERY_RESULT_BACKEND'] = app.config['CELERY_BROKER_URL']
+app.config['CELERY_BROKER_URL'] = 'amqp://'
+app.config['CELERY_RESULT_BACKEND'] = 'amqp'
 app.config['VIRTUAL_ENV'] = DEFAULT_PYTHON
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/feedback.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://db:db@db/db?charset=utf8mb4'
 
 celery = Celery(app.name)
 celery.conf.update(app.config)
 
+admin.init_app(app)
 db.app = app
 db.init_app(app)
-if not database_exists(app.config['SQLALCHEMY_DATABASE_URI']):
-    create_database(app.config['SQLALCHEMY_DATABASE_URI'])
-db.drop_all()
-db.create_all()
 monkeypatch_db_celery(app, celery)
 
 Markdown(app)
 
 
-def task_judge(problemset, problem, filename):
+@app.before_first_request
+def init_db():
+    #if not database_exists(app.config['SQLALCHEMY_DATABASE_URI']):
+    #    create_database(app.config['SQLALCHEMY_DATABASE_URI'])
+    db.drop_all()
+    db.create_all()
+
+
+def task_judge(problemset, problem, filename, data):
     PROBLEMS = problems.get_testcase_for_judging(problemset, problem)
     subtasks = chain(
         [subtask_judge.s(
@@ -71,6 +77,7 @@ def task_judge(problemset, problem, filename):
     feedback = Feedback()
     feedback.filename = filename
     feedback.max_idx = PROBLEMS['N'] - 1
+    feedback.filedata = data
     db.session.add(feedback)
     db.session.commit()
     return subtasks
@@ -88,6 +95,12 @@ def subtask_judge(self, previous_return=None, **kwargs):
         found.status = Status['STARTED']
         found.cur_idx = 0
         db.session.commit()
+
+        if not os.path.exists('./UPLOADED/'):
+            os.makedirs('./UPLOADED/')
+        filepath = os.path.join('./UPLOADED/', found.filename)
+        with open(filepath, 'wb') as f:
+            f.write(found.filedata)
 
     class JudgeFailed(Exception):
         pass
@@ -114,14 +127,12 @@ def subtask_judge(self, previous_return=None, **kwargs):
         return _
 
     try:
-        with open('./UPLOADED/%s.%s.log' % (filename, idx), 'wb') as log:
-            Validate(
-                this_program='./UPLOADED/%s' % (filename,),
-                from_json=json,
-                logfile=log,
-                report=report,
-                python=app.config['VIRTUAL_ENV'],
-            )
+        Validate(
+            this_program='./UPLOADED/%s' % (filename,),
+            from_json=json,
+            report=report,
+            python=app.config['VIRTUAL_ENV'],
+        )
     except JudgeFailed as Failed:
         found = Feedback.query.get(filename)
         found.status = Status['FAILED']
@@ -228,8 +239,8 @@ def problem_submit(problem):
                 url_for('problem', problem='/'.join((problemset, problem)))
         )
     else:
-        filename = submit()
-        task_judge(problemset, problem, filename).apply_async(countdown=1.5)
+        filename, data = submit()
+        task_judge(problemset, problem, filename, data).apply_async(countdown=1.5)
         return render_template(
                 'result.html',
                 filename=filename,
@@ -260,6 +271,9 @@ def submit():
     with open(filepath + '.origin', 'rb') as f_origin:
         data = f_origin.read()
     det = Chardet(data)
-    with open(filepath, 'wb') as f_real:
-        f_real.write(data.decode(det['encoding']).encode('utf-8'))
-    return filename
+    data2 = None
+    if 'encoding' in det:
+        data2 = data.decode(det['encoding']).encode('utf-8')
+        with open(filepath, 'wb') as f_real:
+            f_real.write(data2)
+    return filename, data2

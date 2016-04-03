@@ -2,10 +2,13 @@ from datetime import datetime
 from enum import Enum
 from json import dumps
 
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy_utils import ChoiceType as EnumType
 
 db = SQLAlchemy()
+admin = Admin()
 
 
 class JudgeStatus(Enum):
@@ -19,6 +22,7 @@ class JudgeFeedback(db.Model):
     __tablename__ = "feedback"
 
     filename = db.Column(db.String(36), primary_key=True)  # TODO: UUID
+    filedata = db.Column(db.LargeBinary(), nullable=True)
     cur_idx = db.Column(db.Integer, default=0)
     max_idx = db.Column(db.Integer, nullable=False)
     status = db.Column(
@@ -42,6 +46,8 @@ class JudgeFeedback(db.Model):
         output = {}
         for key in self.__dict__:
             if key[0] == '_':
+                pass
+            elif key in ('filedata'):
                 pass
             elif key in ('updated', 'created', 'status'):
                 output[key] = str(getattr(self, key))
@@ -78,3 +84,7 @@ def monkeypatch_db_celery(app, celery):
             with app.app_context():
                 return TaskBase.__call__(self, *args, **kwargs)
     celery.Task = ContextTask
+
+
+admin.add_view(ModelView(JudgeFeedback, db.session))
+

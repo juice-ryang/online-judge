@@ -2,6 +2,7 @@ chardet
 pexpect
 click
 flask
+flask-admin
 Flask-Markdown
 celery
 flower
