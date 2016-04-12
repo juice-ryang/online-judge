@@ -6,7 +6,9 @@ services:
         environment:
             - CELERY_BROKER_URL=amqp://rabbitmq
             - VIRTUAL_ENV=/usr/local
-        working_dir: /code
+        volumes:
+            - ../online-judge:/opt/online-judge
+        working_dir: /opt/online-judge
         ports:
             - "8000:8000"
         depends_on:
@@ -29,17 +31,22 @@ services:
     celery:
         build: .
         command: celery worker -A app.celery --loglevel=info
+        volumes:
+            - ../online-judge:/opt/online-judge
+        working_dir: /opt/online-judge
         environment:
             - CELERY_BROKER_URL=amqp://rabbitmq
             - VIRTUAL_ENV=/usr/local
             - PYTHONIOENCODING="utf-8"
-        working_dir: /code
         links:
             - rabbitmq
             - db
     flower:
         build: .
         command: flower -A app.celery --port=5555
+        volumes:
+            - ../online-judge:/opt/online-judge
+        working_dir: /opt/online-judge
         environment:
             - VIRTUAL_ENV=/usr/local
             - CELERY_BROKER_URL=amqp://rabbitmq
