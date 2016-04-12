@@ -36,11 +36,11 @@ class JudgeFeedback(db.Model):
     expected_output = db.Column(db.String(1024), nullable=True)
     actual_output = db.Column(db.String(1024), nullable=True)
     created = db.Column(db.DateTime, default=datetime.now)
-    updated = db.Column(db.DateTime, nullable=False)
+    updated = db.Column(db.String(30), nullable=False)
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
-        super().__setattr__('updated', datetime.now())
+        super().__setattr__('updated', str(datetime.now()))
 
     def __str__(self):
         output = {}
@@ -49,7 +49,7 @@ class JudgeFeedback(db.Model):
                 pass
             elif key in ('filedata'):
                 pass
-            elif key in ('updated', 'created', 'status'):
+            elif key in ('created', 'status'):
                 output[key] = str(getattr(self, key))
             elif key in ('expected_output', 'actual_output'):
                 value = getattr(self, key)
