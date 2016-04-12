@@ -69,6 +69,14 @@ class _TerminalCapsuleUtils(object):
         return _
 
     @staticmethod
+    def strip_stdout(stdout):
+        """Issue #44, Trailing Whitespace for STDOUT."""
+        *need_to_strip, except_last = stdout.split('\n')
+        stripped_stdout = [line.rstrip() for line in need_to_strip]
+        stripped_stdout.append(except_last)
+        return '\n'.join(stripped_stdout)
+
+    @staticmethod
     def endpoints(pair_from_capsule, records=None):
         """Capsule's in/out would be handled in here."""
         if pair_from_capsule:
@@ -249,6 +257,7 @@ def Validate(this_program, from_json,
         @report
         def _GET_STDIN():
             stdin, buf.expected = captured[now.N]
+            buf.expected = _TerminalCapsuleUtils.strip_stdout(buf.expected)
             print('-----')
             print('Input %d %s' % (
                 now.N,
@@ -265,6 +274,7 @@ def Validate(this_program, from_json,
             if buf.borrow:
                 buf.stdout = buf.borrow + buf.stdout
                 buf.borrow = None
+            buf.stdout = _TerminalCapsuleUtils.strip_stdout(buf.stdout)
             print('Output %d %s' % (now.N, buf.stdout.encode('utf-8')))
             return buf.stdout
 
