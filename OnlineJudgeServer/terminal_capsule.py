@@ -246,6 +246,8 @@ def Validate(this_program, from_json,
 
         @report
         def _LEFT():
+            if now.MAX == now.N + 1:
+                return _FAIL()
             _PASS()  # XXX order) be here!
             print('[LEFT] %d' % (now.N))
             buf.borrow = buf.stdout[len(buf.expected):]
