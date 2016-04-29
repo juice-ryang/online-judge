@@ -7,7 +7,7 @@ services:
             - CELERY_BROKER_URL=amqp://rabbitmq
             - VIRTUAL_ENV=/usr/local
         volumes:
-            - .:/opt/online-judge
+            - .:/opt/online-judge:ro
         working_dir: /opt/online-judge
         ports:
             - "8000:8000"
@@ -32,7 +32,7 @@ services:
         build: .
         command: celery worker -A app.celery --loglevel=info
         volumes:
-            - .:/opt/online-judge
+            - .:/opt/online-judge:ro
         working_dir: /opt/online-judge
         environment:
             - CELERY_BROKER_URL=amqp://rabbitmq
@@ -45,7 +45,7 @@ services:
         build: .
         command: flower -A app.celery --port=5555
         volumes:
-            - .:/opt/online-judge
+            - .:/opt/online-judge:ro
         working_dir: /opt/online-judge
         environment:
             - VIRTUAL_ENV=/usr/local

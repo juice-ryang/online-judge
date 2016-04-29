@@ -1,4 +1,5 @@
 import os
+from tempfile import TemporaryDirectory
 import uuid
 from json import load
 
@@ -84,11 +85,9 @@ def task_judge(problemset, problem, filename, data):
 
 
 # WHENEVER CHANGES HAPPENED FOR CELERY, NEED TO RESTART CELERY!
-@celery.task(bind=True, track_started=True, ignore_result=False)
-def subtask_judge(self, previous_return=None, **kwargs):
+@celery.task(track_started=True, ignore_result=False)
+def subtask_judge(previous_return=None, **kwargs):
     filename = kwargs['filename']
-    idx = kwargs['idx']
-    json = kwargs['json']
 
     if not previous_return:  # first run,
         found = Feedback.query.get(filename)
@@ -96,11 +95,17 @@ def subtask_judge(self, previous_return=None, **kwargs):
         found.cur_idx = 0
         db.session.commit()
 
-        if not os.path.exists('./UPLOADED/'):
-            os.makedirs('./UPLOADED/')
-        filepath = os.path.join('./UPLOADED/', found.filename)
+    with TemporaryDirectory() as dir:
+        filepath = os.path.join(dir, filename)
         with open(filepath, 'wb') as f:
             f.write(found.filedata)
+        return subtask_judge_run(dir, **kwargs)
+
+
+def subtask_judge_run(dir, **kwargs):
+    filename = kwargs['filename']
+    idx = kwargs['idx']
+    json = kwargs['json']
 
     class JudgeFailed(Exception):
         pass
@@ -128,10 +133,10 @@ def subtask_judge(self, previous_return=None, **kwargs):
 
     try:
         Validate(
-            this_program='./UPLOADED/%s' % (filename,),
+            this_program='./%s' % (filename,),
             from_json=json,
             report=report,
-            python=app.config['VIRTUAL_ENV'],
+            cwd=dir,
         )
     except JudgeFailed as Failed:
         found = Feedback.query.get(filename)
@@ -263,17 +268,16 @@ def status(filename):
 def submit():
     f = request.files['upfile']
     filename = str(uuid.uuid4())
-    if not os.path.exists('./UPLOADED/'):
-        os.makedirs('./UPLOADED/')
-    filepath = os.path.join('./UPLOADED/', filename)
-    f.save(filepath + '.origin')
-    data = None
-    with open(filepath + '.origin', 'rb') as f_origin:
-        data = f_origin.read()
-    det = Chardet(data)
-    data2 = None
-    if 'encoding' in det:
-        data2 = data.decode(det['encoding']).encode('utf-8')
-        with open(filepath, 'wb') as f_real:
-            f_real.write(data2)
-    return filename, data2
+    with TemporaryDirectory() as dir:
+        filepath = os.path.join(dir, filename)
+        f.save(filepath + '.origin')
+        data = None
+        with open(filepath + '.origin', 'rb') as f_origin:
+            data = f_origin.read()
+        det = Chardet(data)
+        data2 = None
+        if 'encoding' in det:
+            data2 = data.decode(det['encoding']).encode('utf-8')
+            with open(filepath, 'wb') as f_real:
+                f_real.write(data2)
+        return filename, data2

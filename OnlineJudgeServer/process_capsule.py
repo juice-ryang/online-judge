@@ -32,9 +32,10 @@ class ProcessCapsule(object):
     _CONDITIONS = [_SEGFAULT, EOF, TIMEOUT]
     _TIMEOUT = .05
 
-    def __init__(self, program, logfile=None):
+    def __init__(self, program, logfile=None, cwd=None):
         self.program = program
         self.logfile = logfile
+        self.cwd = cwd
         self._readpos = 0
         self._runtime = None
         self._initialized_pid = None
@@ -64,6 +65,7 @@ class ProcessCapsule(object):
 
         self._runtime = spawn(
             self.__cmd__(),
+            cwd=self.cwd,
             logfile=self.logfile,
             ignore_sighup=False)
         self._initialized_pid = self._runtime.pid
@@ -155,8 +157,8 @@ if environ['VIRTUAL_ENV']:
 
 
 class PythonCapsule(ProcessCapsule):
-    def __init__(self, program, logfile=None, python=DEFAULT_PYTHON):
-        super().__init__(program, logfile=logfile)
+    def __init__(self, program, python=DEFAULT_PYTHON, **kwargs):
+        super().__init__(program, **kwargs)
         self.python = python
 
     def __cmd__(self):
