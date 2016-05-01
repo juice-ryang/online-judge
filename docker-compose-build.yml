@@ -1,0 +1,55 @@
+version: '2'
+services:
+    web:
+        build: .
+        command: gunicorn -c configs/gunicorn.py app:app
+        environment:
+            - CELERY_BROKER_URL=amqp://rabbitmq
+            - VIRTUAL_ENV=/usr/local
+        working_dir: /code
+        ports:
+            - "8000:8000"
+        depends_on:
+            - celery
+            - flower
+        links:
+            - rabbitmq
+            - db
+    db:
+        hostname: db
+        image: mariadb
+        command:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+        environment:
+            - MYSQL_ROOT_PASSWORD=rootless
+            - MYSQL_DATABASE=db
+            - MYSQL_USER=db
+            - MYSQL_PASSWORD=db
+    celery:
+        build: .
+        command: celery worker -A app.celery --loglevel=info
+        environment:
+            - CELERY_BROKER_URL=amqp://rabbitmq
+            - VIRTUAL_ENV=/usr/local
+            - PYTHONIOENCODING="utf-8"
+        working_dir: /code
+        links:
+            - rabbitmq
+            - db
+    flower:
+        build: .
+        command: flower -A app.celery --port=5555
+        environment:
+            - VIRTUAL_ENV=/usr/local
+            - CELERY_BROKER_URL=amqp://rabbitmq
+            - FLOWER_BROKER_API=http://guest:guest@rabbitmq:15672/api/
+        ports:
+            - "5555:5555"
+        links:
+            - rabbitmq
+    rabbitmq:
+        hostname: rabbitmq
+        image: rabbitmq:3-management
+        ports:
+            - "15672:15672"
