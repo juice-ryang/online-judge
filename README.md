@@ -1,6 +1,8 @@
 <img src="https://cdn.rawgit.com/juice-ryang/online-judge/master/OnlineJudgeServer/static/logo.svg" width="128px">
 
 # Jr. Online Judge.
+
+[![Join the chat at https://gitter.im/juice-ryang/online-judge](https://badges.gitter.im/juice-ryang/online-judge.svg)](https://gitter.im/juice-ryang/online-judge?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 어서오세요, 여기는 **주니어 온라인 저지**(*쥬스-량* 온라인 저지)의 소스코드 저장소입니다.
 
 ## 소개
