@@ -3,6 +3,8 @@
 # Jr. Online Judge.
 어서오세요, 여기는 **주니어 온라인 저지**(*쥬스-량* 온라인 저지)의 소스코드 저장소입니다.
 
+[![Gitter](https://img.shields.io/gitter/room/juice-ryang/online-judge.svg?maxAge=2592000?style=plastic)](https://gitter.im/juice-ryang/online-judge)
+
 ## 소개
 비 CS 전공자분들의 원활한 Python 적응을 위하여, 컴퓨팅사고력 (CT) 강의에서 제공되는 실습자료를 채점해주는 웹서비스입니다.
 
