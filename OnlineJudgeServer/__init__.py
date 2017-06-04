@@ -88,9 +88,9 @@ def task_judge(problemset, problem, filename, data):
 @celery.task(track_started=True, ignore_result=False)
 def subtask_judge(previous_return=None, **kwargs):
     filename = kwargs['filename']
+    found = Feedback.query.get(filename)
 
     if not previous_return:  # first run,
-        found = Feedback.query.get(filename)
         found.status = Status['STARTED']
         found.cur_idx = 0
         db.session.commit()
